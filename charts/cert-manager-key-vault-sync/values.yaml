@@ -1,0 +1,29 @@
+image:
+  repository: docker.io/rdvansloten/cert-manager-key-vault-sync
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+checkInterval: 600
+
+azure:
+  keyVaultName: ""
+  workloadIdentity:
+    clientId: ""
+    subscriptionId: ""
+    tenantId: ""
+
+loggingLevels:
+  default: "INFO"
+  azure: "WARNING"
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}
