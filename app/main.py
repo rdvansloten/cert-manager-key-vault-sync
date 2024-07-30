@@ -43,7 +43,8 @@ def compare_thumbprint(kubernetes_cert, key_vault_thumbprint):
     ], capture_output=True, text=True)
     kubernetes_thumbprint = re.search(r'Fingerprint=([\dA-F:]+)', kubernetes_raw_thumbprint.stdout).group(1).replace(':', '')
     
-    # Remove it after use
+    # Remove certificate after use
+    logging.debug(f"Deleting temporary file 'cert.pem'.")
     os.remove("cert.pem")
 
     logging.debug(f"Kubernetes Thumbprint: {kubernetes_thumbprint}")
@@ -102,6 +103,11 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
         imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
         
         logging.info(f"PFX certificate '{imported_pfx_cert.name}' imported successfully.")
+        
+        logging.debug(f"Deleting temporary certificate files.")
+        os.remove(pfx_file)
+        os.remove("key.pem")
+        os.remove("cert.pem")
 
     except Exception as e:
         error = f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
