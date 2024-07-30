@@ -14,8 +14,11 @@ Kubernetes app that syncs cert-manager Secrets to Azure Key Vault.
 The synchronization process is a small Python3 application running on an Alpine image. It leverages OpenSSL to bundle the `.cer` and `.key` files, then uploads the resulting `.pfx` file to Azure Key Vault. cert-manager-key-vault-sync requires verbs `"get"`, `"list"`, `"watch"` on the `"secrets"` resource, as it needs to pull cert-manager-generated Secrets from all namespaces. It will only search for Secrets with the annotation `cert-manager.io/certificate-name` by default, though this can be changed.
 
 The attached Service Account is connected to a Managed Identity in Azure, providing access to the Key Vault. The Managed Identity requires the `Key Vault Certificates Officer` role on the Key Vault, or a custom role with permissions to list, read, create and update Certificates and their metadata.
-  
+
+### Diagram
+
 ![A diagram of the synchronization](./attachments/cert-sync.jpg)
+
 
 ## Examples
 
@@ -69,6 +72,22 @@ az identity federated-credential create \
   --issuer $OIDC_URL \
   --subject "system:serviceaccount:$NAMESPACE:$APP_NAME" \
   --audiences api://AzureADTokenExchange
+```
+
+### Output
+```sh
+2024-07-30 10:59:03 - INFO - Initializing with Client ID: 0dc3b***
+2024-07-30 10:59:03 - INFO - Initialized Azure Key Vault client using Key Vault 'kv-demo'.
+2024-07-30 10:59:03 - INFO - Starting cert-manager-key-vault-sync process.
+2024-07-30 10:59:03 - INFO - Connection to Kubernetes successful.
+2024-07-30 10:59:03 - INFO - Detected Secrets:
+2024-07-30 10:59:04 - INFO - - 'demo-sandbox-com' in namespace 'default'
+2024-07-30 10:59:04 - INFO - - 'demo2-sandbox-com' in namespace 'default'
+2024-07-30 10:59:04 - INFO - - 'grafana-sandbox-com' in namespace 'grafana'
+2024-07-30 10:59:04 - INFO - Connection to Key Vault successful.
+2024-07-30 11:09:06 - INFO - Key Vault Certificate 'demo2-sandbox-com' does not exist. Creating it.
+2024-07-30 11:09:06 - INFO - Writing Secret demo2-sandbox-com from namespace 'default' to Key Vault 'kv-demo'.
+2024-07-30 11:09:06 - INFO - PFX certificate 'demo2-sandbox-com' imported successfully.
 ```
 
 ## Docker Build
