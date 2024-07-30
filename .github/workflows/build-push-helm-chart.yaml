@@ -27,4 +27,4 @@ jobs:
       run: |
         CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
         helm package ${{ env.IMAGE_NAME }}
-        helm chart push $IMAGE_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}
+        helm push $IMAGE_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}

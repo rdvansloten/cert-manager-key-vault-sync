@@ -19,9 +19,10 @@ jobs:
 
     - name: Install yq
       run: |
-        sudo apt-get update
-        sudo apt-get install -y yq
-    
+        sudo add-apt-repository ppa:rmescandon/yq
+        sudo apt update
+        sudo apt install yq -y
+            
     - name: Read version from YAML
       id: read_version
       run: |
