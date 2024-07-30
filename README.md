@@ -1,6 +1,7 @@
 # cert-manager-key-vault-sync
 Kubernetes app that syncs cert-manager Secrets to Azure Key Vault.
 
+[![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml) [![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml)
 ## Requirements & Limitations
 - Running [cert-manager](https://cert-manager.io) `~> v1` in your Azure Kubernetes cluster
 - Only syncs Kubernetes Secrets to Key Vault *Certificates* (not to Key Vault *Secrets*)
