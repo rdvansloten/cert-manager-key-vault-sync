@@ -7,7 +7,7 @@ Kubernetes app that syncs cert-manager Secrets to Azure Key Vault.
 
 - Running [cert-manager](https://cert-manager.io) `~> v1` in your Azure Kubernetes cluster
 - Only syncs Kubernetes Secrets to Key Vault *Certificates* (not to Key Vault *Secrets*)
-- Currently, the included Helm chart authenticates using (Workload Identity)[https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview]
+- Currently, the included Helm chart authenticates using [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
 
 ## Design
 
@@ -91,3 +91,22 @@ helm upgrade --install cert-manager-key-vault-sync \
     --values ./charts/cert-manager-key-vault-sync/values.yaml \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
+
+## Contributing to [cert-manager-key-vault-sync](https://github.com/rdvansloten/cert-manager-key-vault-sync)
+
+I'd love your input! I want to make contributing to this project as easy and transparent as possible, whether it's:
+
+-   Reporting [an issue](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=bug&template=bug_report.yml).
+-   [Discussing](https://github.com/rdvansloten/cert-manager-key-vault-sync/discussions) the current state of the code.
+-   Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
+-   Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
+-   Becoming a maintainer.
+
+**All changes happen through Pull Requests**
+
+Pull requests are the best way to propose changes. I actively welcome your Pull Requests:
+
+1.  Fork this repository and create your branch from `main`.
+2.  If you've added code that should be tested, add some test examples.
+3.  Update the documentation.
+4.  Submit that Pull Request!
