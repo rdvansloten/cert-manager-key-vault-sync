@@ -111,7 +111,7 @@ helm upgrade --install cert-manager-key-vault-sync \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
 
-## Contributing to [cert-manager-key-vault-sync](https://github.com/rdvansloten/cert-manager-key-vault-sync)
+## Contributing
 
 I'd love your input! I want to make contributing to this project as easy and transparent as possible, whether it's:
 
