@@ -68,7 +68,7 @@ az identity federated-credential create \
 ## Docker Build
 ```
 docker buildx build . \
-    --tag docker.io/rdvansloten/cert-manager-key-vault-sync:latest \
+    --tag cert-manager-key-vault-sync:latest \
     --platform linux/amd64 \
     --pull
 ```
@@ -79,7 +79,7 @@ If you're running an older version of Helm, `HELM_EXPERIMENTAL_OCI=1` needs to b
 ```
 export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
-    oci://registry-1.docker.io/rdvansloten/cert-manager-key-vault-sync \
+    oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
     --values ./charts/cert-manager-key-vault-sync/values.yaml \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
