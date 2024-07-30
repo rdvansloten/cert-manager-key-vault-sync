@@ -27,7 +27,7 @@ jobs:
       id: read_version
       run: |
         version=$(yq eval '.version' meta.yaml)
-        echo "APP_VERSION=$version" >> "$GITHUB_OUTPUT"
+        echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -45,7 +45,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:latest, ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:$APP_VERSION
+        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:latest, ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}
 
     - name: Logout from Docker Hub
       run: docker logout
