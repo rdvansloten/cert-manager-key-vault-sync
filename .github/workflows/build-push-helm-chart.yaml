@@ -1,0 +1,30 @@
+name: Build and Push Helm Chart
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+    IMAGE_NAME: cert-manager-key-vault-sync
+    REPOSITORY_NAME: rdvansloten
+    HELM_REGISTRY_SERVER: registry-1.docker.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Log into Helm Registry
+      run: | 
+        echo "${{ secrets.DOCKER_PAT }}" | helm registry login -u ${{ secrets.DOCKER_USERNAME }} ${{ env.HELM_REGISTRY_SERVER }} --password-stdin
+    
+    - name: Build and push Helm chart
+      working-directory: ./charts
+      run: |
+        CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
+        helm package ${{ env.IMAGE_NAME }}
+        helm chart push $IMAGE_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}

@@ -1,11 +1,11 @@
 FROM python:3.12.4-alpine
 
 # Create a non-root user and group
-RUN addgroup -S palamute && adduser -S haro -G palamute
+RUN addgroup -S corgis && adduser -S haro -G corgis
 
 WORKDIR /app
 # Ensure the working directory has the correct permissions
-RUN chown haro:palamute /app
+RUN chown haro:corgis /app
 
 # Install openssl, required for certificate generation
 RUN apk upgrade --update-cache --available && \

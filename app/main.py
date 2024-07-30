@@ -19,6 +19,7 @@ key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
 key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
 managed_identity_client_id = os.getenv("MANAGED_IDENTITY_CLIENT_ID")
 check_interval = int(os.getenv("CHECK_INTERVAL", 300))
+filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
 # Logging credentials initialization
 logging.info(f"Initializing with Client ID: {managed_identity_client_id}")
@@ -73,11 +74,11 @@ def load_initial_state():
     try:
         k8s_client.list_secret_for_all_namespaces()
         logging.info("Connection to Kubernetes successful.")
-        logging.info("Detected cert-manager Secrets:")
+        logging.info("Detected Secrets:")
         secrets = k8s_client.list_secret_for_all_namespaces()
         for secret in secrets.items:
             annotations = secret.metadata.annotations
-            if annotations and "cert-manager.io/certificate-name" in annotations:
+            if annotations and filter_annotation in annotations:
                 logging.info(f"- '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'")
 
     except Exception as e:
@@ -110,8 +111,8 @@ def sync_k8s_secrets_to_key_vault():
     secrets = k8s_client.list_secret_for_all_namespaces()
     for secret in secrets.items:
         annotations = secret.metadata.annotations
-        if annotations and "cert-manager.io/certificate-name" in annotations:
-            cert_name = annotations["cert-manager.io/certificate-name"]
+        if annotations and filter_annotation in annotations:
+            cert_name = annotations[filter_annotation]
             namespace = secret.metadata.namespace
 
             # Extract certificate data
