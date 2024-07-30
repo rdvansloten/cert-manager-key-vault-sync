@@ -116,7 +116,6 @@ helm upgrade --install cert-manager-key-vault-sync \
 I'd love your input! I want to make contributing to this project as easy and transparent as possible, whether it's:
 
 -   Reporting [an issue](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=bug&template=bug_report.yml).
--   [Discussing](https://github.com/rdvansloten/cert-manager-key-vault-sync/discussions) the current state of the code.
 -   Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
 -   Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
 -   Becoming a maintainer.
