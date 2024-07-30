@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'charts/**'
+      - 'app/**'
+      - 'Dockerfile'
 
 env:
     IMAGE_NAME: cert-manager-key-vault-sync
