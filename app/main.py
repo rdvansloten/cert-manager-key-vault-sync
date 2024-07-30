@@ -103,15 +103,16 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
         imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
         
         logging.info(f"PFX certificate '{imported_pfx_cert.name}' imported successfully.")
-        
-        logging.debug(f"Deleting temporary certificate files.")
-        os.remove(pfx_file)
-        os.remove("key.pem")
-        os.remove("cert.pem")
 
     except Exception as e:
         error = f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
         logging.error(error)
+    
+    finally:
+        logging.debug(f"Deleting temporary certificate files.")
+        os.remove(pfx_file)
+        os.remove("key.pem")
+        os.remove("cert.pem")
 
 def sync_k8s_secrets_to_key_vault():
     secrets = k8s_client.list_secret_for_all_namespaces()
