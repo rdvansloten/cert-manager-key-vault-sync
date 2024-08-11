@@ -7,7 +7,7 @@ import subprocess
 
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.certificates import CertificateClient
-from azure.core.exceptions import ResourceNotFoundError
+from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
 from kubernetes import client, config
 
 # Configure logging
@@ -25,9 +25,29 @@ filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 logging.info(f"Initializing with Client ID: {managed_identity_client_id}")
 
 # Initialize Key Vault client
-credential = DefaultAzureCredential(managed_identity_client_id=managed_identity_client_id, exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
-certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
-logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
+try:
+    credential = DefaultAzureCredential(managed_identity_client_id=managed_identity_client_id, exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
+    certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
+
+    # Test connection by making a small request
+    logging.info("Detected Key Vault Certificates:")
+    certificate_client.list_properties_of_certificates(max_page_size=1)
+    for cert in certificate_client.list_properties_of_certificates():
+        logging.info(f"- {cert.name}")
+
+    logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
+
+except ResourceNotFoundError as e:
+    logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
+    raise
+
+except ServiceRequestError as e:
+    logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
+    raise
+
+except Exception as e:
+    logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
+    raise
 
 # Initialize Kubernetes client
 config.load_incluster_config()
@@ -87,7 +107,6 @@ def load_initial_state():
 
     try:
         certificate_client.list_properties_of_certificates()
-        logging.info("Connection to Key Vault successful.")
     except Exception as e:
         logging.error(f"Failed to load Certificates from Key Vault: {str(e)}")
 
