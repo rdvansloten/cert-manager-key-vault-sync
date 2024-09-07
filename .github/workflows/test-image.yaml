@@ -1,4 +1,4 @@
-name: Test Docker Image
+name: Test Docker Image Build
 
 on:
   workflow_dispatch:
@@ -28,4 +28,4 @@ jobs:
       with:
         context: .
         push: false
-        tags: ${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+        tags: ${{ github.repository }}:gh-job-$GITHUB_RUN_ID

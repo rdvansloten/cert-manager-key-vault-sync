@@ -1,4 +1,4 @@
-name: Helm Chart
+name: Build and Push Helm Chart
 
 on:
   workflow_dispatch:
