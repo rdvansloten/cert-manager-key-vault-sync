@@ -68,7 +68,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-job-${{ github.run_id }}
+        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-run-${{ github.run_id }}
 
     - name: Logout from Docker Hub
       run: docker logout
@@ -150,22 +150,35 @@ jobs:
           --namespace $NAMESPACE \
           --create-namespace \
           --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-job-${{ github.run_id }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
           --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
+
+        echo "Helm template render:"
+        helm template cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --namespace $NAMESPACE \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
+        cat output.yaml
     
     - name: Run Tests
       run: |
+        sleep 20
+
         echo "Getting fake certificate from Secret..."
         kubectl describe secret fake-cert-manager-secret -n default
 
         echo "Getting deployment status..."
         kubectl get deployments --namespace $NAMESPACE
+        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
 
         echo "Getting logs from cert-manager-key-vault-sync..."
-        sleep 30
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
         echo "Uninstalling Helm chart..."
@@ -180,20 +193,34 @@ jobs:
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
-          --set useNamespaces=true \
+          --set useNamespaces="true" \
           --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
-
+        
+        echo "Helm template render:"
+        helm template cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --namespace $NAMESPACE \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set useNamespaces="true" \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
+        cat output.yaml
 
     - name: Run Tests
       run: |
+        sleep 20
+
         echo "Getting fake certificate from Secret..."
         kubectl describe secret fake-cert-manager-secret -n default
 
         echo "Getting deployment status..."
         kubectl get deployments --namespace $NAMESPACE
+        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
 
         echo "Getting logs from cert-manager-key-vault-sync..."
-        sleep 30
+        
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
         echo "Uninstalling Helm chart..."

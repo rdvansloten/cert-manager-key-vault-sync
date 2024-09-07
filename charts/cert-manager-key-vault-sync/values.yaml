@@ -9,7 +9,7 @@ replicaCount: 1
 checkInterval: 600
 
 # Is set to true, the namespace name is appended to the certificate name in the Key Vault
-useNamespaces: false
+useNamespaces: "false"
 
 azure:
   keyVaultName: ""
