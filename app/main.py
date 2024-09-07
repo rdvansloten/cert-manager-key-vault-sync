@@ -18,6 +18,7 @@ logging.getLogger('azure').setLevel(getattr(logging, os.getenv("AZURE_LOGGING_LE
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
 key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
 managed_identity_client_id = os.getenv("MANAGED_IDENTITY_CLIENT_ID")
+use_namespaces = os.getenv("USE_NAMESPACES", "false").lower() in ("true", "1", "yes", "enabled")
 check_interval = int(os.getenv("CHECK_INTERVAL", 300))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
@@ -114,17 +115,23 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
     pfx_file = create_pfx(cert_data, key_data, cert_name)
 
     try:
-        logging.info(f"Writing Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
-        
         with open(pfx_file, "rb") as f:
             pfx_cert_bytes = f.read()
-
-        imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
+        
+        if use_namespaces is True:
+            logging.info(f"Writing Secret {namespace}-{cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
+            imported_pfx_cert = certificate_client.import_certificate(certificate_name=f"{namespace}-{cert_name}", certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
+        else:
+            logging.info(f"Writing Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
+            imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
         
         logging.info(f"PFX certificate '{imported_pfx_cert.name}' imported successfully.")
 
     except Exception as e:
-        error = f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
+        if use_namespaces is True:
+            error = f"Failed to sync Secret {namespace}-{cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
+        else:
+            error = f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
         logging.error(error)
     
     finally:
@@ -149,18 +156,32 @@ def sync_k8s_secrets_to_key_vault():
             certificate_exists = True
             
             try:
-                certificate_client.get_certificate(cert_name)
+                if use_namespaces is True:
+                    certificate_client.get_certificate(f"{namespace}-{cert_name}")
+                else:
+                    certificate_client.get_certificate(cert_name)
             except ResourceNotFoundError as e:
                 certificate_exists = False
             
             if certificate_exists is False:
-                logging.info(f"Key Vault Certificate '{cert_name}' does not exist. Creating it.")
-                create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
+                if use_namespaces is True:
+                    logging.info(f"Key Vault Certificate '{namespace}-{cert_name}' does not exist. Creating it.")
+                    create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
+                else:
+                    logging.info(f"Key Vault Certificate '{cert_name}' does not exist. Creating it.")
+                    create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
             elif compare_thumbprint(cert_data, certificate_client.get_certificate(cert_name).properties.x509_thumbprint.hex().upper().replace('X', 'x')):
-                logging.info(f"Thumbprint mismatch for Key Vault Certificate '{cert_name}'. Updating it.")
-                create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
+                if use_namespaces is True:
+                    logging.info(f"Thumbprint mismatch for Key Vault Certificate '{namespace}-{cert_name}'. Updating it.")
+                    create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
+                else:
+                    logging.info(f"Thumbprint mismatch for Key Vault Certificate '{cert_name}'. Updating it.")
+                    create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
             else:
-                logging.debug(f"Key Vault Certificate '{cert_name}' is up-to-date.")
+                if use_namespaces is True:
+                    logging.debug(f"Key Vault Certificate '{namespace}-{cert_name}' is up-to-date.")
+                else:
+                    logging.debug(f"Key Vault Certificate '{cert_name}' is up-to-date.")
 
 def main():
     logging.info("Starting cert-manager-key-vault-sync process.")

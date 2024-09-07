@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}
+  name: cert-manager-key-vault-sync
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: cert-sync
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: cert-manager-key-vault-sync
+    app.kubernetes.io/instance: cert-manager-key-vault-sync
     app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
@@ -13,18 +13,18 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: cert-sync
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/name: cert-manager-key-vault-sync
+      app.kubernetes.io/instance: cert-manager-key-vault-sync
   template:
     metadata:
       labels:
         azure.workload.identity/use: "true"
-        app.kubernetes.io/name: cert-sync
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: cert-manager-key-vault-sync
+        app.kubernetes.io/instance: cert-manager-key-vault-sync
     spec:
-      serviceAccountName: {{ .Release.Name }}
+      serviceAccountName: cert-manager-key-vault-sync
       containers:
-        - name: cert-sync
+        - name: cert-manager-key-vault-sync
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
@@ -34,6 +34,8 @@ spec:
               value: {{ .Values.azure.keyVaultName }}
             - name: CHECK_INTERVAL
               value: "{{ .Values.checkInterval | default 300 }}"
+            - name: USE_NAMESPACES
+              value: "{{ .Values.useNamespaces | default "false" }}"
             - name: DEFAULT_LOGGING_LEVEL
               value: "{{ .Values.loggingLevels.default | default "INFO" | upper }}"
             - name: AZURE_LOGGING_LEVEL

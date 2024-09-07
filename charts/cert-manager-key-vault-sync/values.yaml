@@ -1,10 +1,15 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: latest
+  tag: v0.1.0
   pullPolicy: IfNotPresent
 
 replicaCount: 1
+
+# Interval in seconds to check for new certificates
 checkInterval: 600
+
+# Is set to true, the namespace name is appended to the certificate name in the Key Vault
+useNamespaces: false
 
 azure:
   keyVaultName: ""

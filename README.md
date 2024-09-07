@@ -1,4 +1,5 @@
 # cert-manager-key-vault-sync
+
 Kubernetes app that syncs cert-manager Secrets to Azure Key Vault.
 
 [![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml) [![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml)
@@ -18,7 +19,6 @@ The attached Service Account is connected to a Managed Identity in Azure, provid
 ### Diagram
 
 ![A diagram of the synchronization](./attachments/cert-sync.jpg)
-
 
 ## Examples
 
@@ -75,6 +75,7 @@ az identity federated-credential create \
 ```
 
 ### Output
+
 ```sh
 2024-07-30 10:59:03 - INFO - Initializing with Client ID: 0dc3b***
 2024-07-30 10:59:03 - INFO - Initialized Azure Key Vault client using Key Vault 'kv-demo'.
@@ -92,7 +93,7 @@ az identity federated-credential create \
 
 ## Docker Build
 
-```
+```sh
 docker buildx build . \
     --tag cert-manager-key-vault-sync:latest \
     --platform linux/amd64 \
@@ -103,28 +104,38 @@ docker buildx build . \
 
 If you're running an older version of Helm, `HELM_EXPERIMENTAL_OCI=1` needs to be set to support OCI charts.
 
-```
+```sh
 export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
     oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
     --values ./charts/cert-manager-key-vault-sync/values.yaml \
+    --version 0.1.0 \
     --namespace cert-manager-key-vault-sync --create-namespace
+```
+
+## Kubernetes Manifest
+
+If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML.
+
+```sh
+helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
+    --values ./charts/cert-manager-key-vault-sync/values.yaml > output.yaml
 ```
 
 ## Contributing
 
 I'd love your input! I want to make contributing to this project as easy and transparent as possible, whether it's:
 
--   Reporting [an issue](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=bug&template=bug_report.yml).
--   Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
--   Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
--   Becoming a maintainer.
+- Reporting [an issue](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=bug&template=bug_report.yml).
+- Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
+- Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
+- Becoming a maintainer.
 
-**All changes happen through Pull Requests**
+### All changes happen through Pull Requests
 
 Pull requests are the best way to propose changes. I actively welcome your Pull Requests:
 
-1.  Fork this repository and create your branch from `main`.
-2.  If you've added code that should be tested, add some test examples.
-3.  Update the documentation.
-4.  Submit that Pull Request!
+1. Fork this repository and create your branch from `main`.
+2. If you've added code that should be tested, add some test examples.
+3. Update the documentation.
+4. Submit that Pull Request!

@@ -4,7 +4,7 @@ metadata:
   name: cert-manager-key-vault-sync
 subjects:
 - kind: ServiceAccount
-  name: {{ .Release.Name }}
+  name: cert-manager-key-vault-sync
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole

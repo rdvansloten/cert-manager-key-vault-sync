@@ -14,6 +14,7 @@ env:
     IMAGE_NAME: cert-manager-key-vault-sync
     REPOSITORY_NAME: rdvansloten
     HELM_REGISTRY_SERVER: registry-1.docker.io
+    KIND_VERSION: v0.24.0
 
 jobs:
   build:
@@ -32,3 +33,43 @@ jobs:
       run: |
         CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
         helm package ${{ env.IMAGE_NAME }}
+    
+    # Step 1: Set up `kind` (Kubernetes in Docker)
+    - name: Install kind
+      run: |
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
+    
+    - name: Create kind cluster
+      run: kind create cluster
+    
+    # Step 2: Install kubectl and Helm
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x ./kubectl
+        sudo mv ./kubectl /usr/local/bin/kubectl
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4.2.0
+      with:
+        version: 'v3.13.3'
+      id: install
+    
+    # Step 3: Deploy Helm chart to kind cluster
+    - name: Deploy Helm chart
+      run: |
+        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          -f ./charts/cert-manager-key-vault-sync/values.yaml \
+          --namespace cert-manager-key-vault-sync \
+          --create-namespace
+
+    # Step 4: Run tests
+    - name: Run Tests
+      run: |
+        kubectl get deployments --namespace cert-manager-key-vault-sync
+
+    # Step 5: Teardown kind cluster
+    - name: Delete kind cluster
+      run: kind delete cluster
