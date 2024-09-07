@@ -6,7 +6,7 @@ Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azu
 
 ## Features
 
-- Supports Kubernetes Nodes running `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm64/v8` (Apple M1)
+- Supports Kubernetes Nodes running `linux/amd64`, `linux/arm64`, `linux/arm64/v8` (Apple M1)
 - Synchronizes Kubernetes Secrets to Azure Key Vault Certificates
 - Leverages passwordless authentication using [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
 - Certificate is automatically rotated when cert-manager triggers a renewal
