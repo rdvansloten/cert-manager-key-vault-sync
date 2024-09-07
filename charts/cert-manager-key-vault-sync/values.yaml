@@ -4,19 +4,32 @@ image:
   pullPolicy: IfNotPresent
 
 replicaCount: 1
+
+# Interval in seconds to check for new certificates
 checkInterval: 600
 
+# Is set to true, the namespace name is appended to the certificate name in the Key Vault
+useNamespaces: "false"
+
 azure:
+  # Name of the Key Vault, do not enter the full URI here
   keyVaultName: ""
+
+  # Properties of the Managed Identity used to access the Key Vault
+  # Ensure that the Managed Identity has at least Key Vault Certificates Officer permissions
   workloadIdentity:
     clientId: ""
     subscriptionId: ""
     tenantId: ""
 
 loggingLevels:
+  # Controls the logging level for the Python application
   default: "INFO"
+  # Controls the logging level for the Azure SDK components
   azure: "WARNING"
 
+# These resources should be plenty, only raise if you have a huge amount
+# of certificates and get OOMKilled errors
 resources:
   limits:
     cpu: 100m
@@ -24,6 +37,7 @@ resources:
   requests:
     cpu: 50m
     memory: 128Mi
+
 nodeSelector: {}
 tolerations: []
 affinity: {}

@@ -1,13 +1,48 @@
 # cert-manager-key-vault-sync
-Kubernetes app that syncs cert-manager Secrets to Azure Key Vault.
+
+Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azure Key Vault. Originally created with the intention of getting LetsEncrypt certficates into Key Vault, but works with any certificate stored in a Kubernetes Secret.
 
 [![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml) [![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml)
+
+## Features
+
+- Supports Kubernetes Nodes running `linux/amd64`, `linux/arm64`, `linux/arm64/v8` (Apple M1)
+- Synchronizes Kubernetes Secrets to Azure Key Vault Certificates
+- Leverages passwordless authentication using [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
+- Certificate is automatically rotated when cert-manager triggers a renewal
+- Supports duplicate certificates in multiple Kubernetes Namespaces (e.g. `*.your-domain.com` in multiple Namespaces)
+- Runs in a lightweight Alpine container, using < 100 MiB of memory
+- Includes a [Helm Chart](#helm-installation) for easy installation
 
 ## Requirements & Limitations
 
 - Running [cert-manager](https://cert-manager.io) `~> v1` in your Azure Kubernetes cluster
 - Only syncs Kubernetes Secrets to Key Vault *Certificates* (not to Key Vault *Secrets*)
-- Currently, the included Helm chart authenticates using [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
+- The included Helm chart only authenticates using [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
+
+## Helm Installation
+
+If you're running an older version of Helm, `HELM_EXPERIMENTAL_OCI=1` needs to be set to support OCI charts.
+
+```sh
+export HELM_EXPERIMENTAL_OCI=1
+helm upgrade --install cert-manager-key-vault-sync \
+    oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
+    --values ./charts/cert-manager-key-vault-sync/values.yaml \
+    --version 0.1.0 \
+    --namespace cert-manager-key-vault-sync --create-namespace
+```
+
+If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
+
+```sh
+helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
+    --values ./charts/cert-manager-key-vault-sync/values.yaml > output.yaml
+```
+
+## Examples
+
+For examples on building the image from scratch or prepping your Azure/Kubernetes environment, see [Examples](./EXAMPLES.md).
 
 ## Design
 
@@ -19,112 +54,23 @@ The attached Service Account is connected to a Managed Identity in Azure, provid
 
 ![A diagram of the synchronization](./attachments/cert-sync.jpg)
 
-
-## Examples
-
-### Creating an Ingress
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: demo
-  namespace: demo
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-staging
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - demo.yourdomain.com
-      secretName: demo-yourdomain-com
-  rules:
-    - host: demo.yourdomain.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: demo
-                port:
-                  number: 80
-```
-
-### Creating a Managed Identity with Federation
-
-```sh
-AKS_NAME="your-aks-cluster"
-AKS_RESOURCE_GROUP="your-aks-cluster-resource-group"
-NAMESPACE="cert-manager-key-vault-sync"
-RESOURCE_GROUP="some-resource-group"
-APP_NAME="cert-manager-key-vault-sync"
-OIDC_URL=$(az aks show --name $AKS_NAME --resource-group $AKS_RESOURCE_GROUP --query "oidcIssuerProfile.issuerUrl" -o tsv)
-
-az identity create \
-  --resource-group $RESOURCE_GROUP \
-  --name $APP_NAME
-
-az identity federated-credential create \
-  --name $APP_NAME \
-  --identity-name $APP_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --issuer $OIDC_URL \
-  --subject "system:serviceaccount:$NAMESPACE:$APP_NAME" \
-  --audiences api://AzureADTokenExchange
-```
-
-### Output
-```sh
-2024-07-30 10:59:03 - INFO - Initializing with Client ID: 0dc3b***
-2024-07-30 10:59:03 - INFO - Initialized Azure Key Vault client using Key Vault 'kv-demo'.
-2024-07-30 10:59:03 - INFO - Starting cert-manager-key-vault-sync process.
-2024-07-30 10:59:03 - INFO - Connection to Kubernetes successful.
-2024-07-30 10:59:03 - INFO - Detected Secrets:
-2024-07-30 10:59:04 - INFO - - 'demo-sandbox-com' in namespace 'default'
-2024-07-30 10:59:04 - INFO - - 'demo2-sandbox-com' in namespace 'default'
-2024-07-30 10:59:04 - INFO - - 'grafana-sandbox-com' in namespace 'grafana'
-2024-07-30 10:59:04 - INFO - Connection to Key Vault successful.
-2024-07-30 11:09:06 - INFO - Key Vault Certificate 'demo2-sandbox-com' does not exist. Creating it.
-2024-07-30 11:09:06 - INFO - Writing Secret demo2-sandbox-com from namespace 'default' to Key Vault 'kv-demo'.
-2024-07-30 11:09:06 - INFO - PFX certificate 'demo2-sandbox-com' imported successfully.
-```
-
-## Docker Build
-
-```
-docker buildx build . \
-    --tag cert-manager-key-vault-sync:latest \
-    --platform linux/amd64 \
-    --pull
-```
-
-## Helm Installation
-
-If you're running an older version of Helm, `HELM_EXPERIMENTAL_OCI=1` needs to be set to support OCI charts.
-
-```
-export HELM_EXPERIMENTAL_OCI=1
-helm upgrade --install cert-manager-key-vault-sync \
-    oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
-    --values ./charts/cert-manager-key-vault-sync/values.yaml \
-    --namespace cert-manager-key-vault-sync --create-namespace
-```
-
 ## Contributing
 
 I'd love your input! I want to make contributing to this project as easy and transparent as possible, whether it's:
 
--   Reporting [an issue](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=bug&template=bug_report.yml).
--   Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
--   Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
--   Becoming a maintainer.
+- Reporting [an issue](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=bug&template=bug_report.yml).
+- Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
+- Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
+- Becoming a maintainer.
+- Supporting my GitHub page:
 
-**All changes happen through Pull Requests**
+[<img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi donation button" width="200px">](https://ko-fi.com/V7V0WI9MI)
+
+### All changes happen through Pull Requests
 
 Pull requests are the best way to propose changes. I actively welcome your Pull Requests:
 
-1.  Fork this repository and create your branch from `main`.
-2.  If you've added code that should be tested, add some test examples.
-3.  Update the documentation.
-4.  Submit that Pull Request!
+1. Fork this repository and create your branch from `main`.
+2. If you've added code that should be tested, add some test examples.
+3. Update the documentation.
+4. Submit that Pull Request!

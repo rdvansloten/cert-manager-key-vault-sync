@@ -1,4 +1,4 @@
-name: Test Helm Chart
+name: Test Helm Chart Deployment
 
 on:
   workflow_dispatch:
@@ -10,18 +10,74 @@ on:
       - 'app/**'
       - 'Dockerfile'
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
     IMAGE_NAME: cert-manager-key-vault-sync
     REPOSITORY_NAME: rdvansloten
     HELM_REGISTRY_SERVER: registry-1.docker.io
+    KIND_VERSION: v0.24.0
+    RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
+    CLUSTER_NAME: "aks-cmkvs-test"
+    MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
+    NAMESPACE: "cert-manager-key-vault-sync"
+    SERVICE_ACCOUNT: "cert-manager-key-vault-sync"
 
 jobs:
   build:
+    name: Test Helm Chart on Azure Kubernetes Service
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Install Azure CLI
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        sudo az aks install-cli
+    
+    - name: Install yq
+      run: |
+        sudo add-apt-repository ppa:rmescandon/yq
+        sudo apt update
+        sudo apt install yq -y
+    
+    - name: Install Helm
+      uses: azure/setup-helm@v4.2.0
+      with:
+        version: 'v3.13.3'
+
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }}
+        tenant-id: ${{ secrets.TENANT_ID }}
+        subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/amd64,linux/arm64,linux/arm64/v8
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PAT }}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        platforms: linux/amd64,linux/arm64,linux/arm64/v8
+        context: .
+        push: true
+        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-run-${{ github.run_id }}
+
+    - name: Logout from Docker Hub
+      run: docker logout
 
     - name: Log into Helm Registry
       run: | 
@@ -32,3 +88,155 @@ jobs:
       run: |
         CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
         helm package ${{ env.IMAGE_NAME }}
+    
+    - name: Create AKS Cluster with Workload Identity
+      run: |
+        az aks create \
+          --resource-group $RESOURCE_GROUP \
+          --name $CLUSTER_NAME-${{ github.run_id }} \
+          --enable-workload-identity \
+          --enable-managed-identity \
+          --enable-oidc-issuer \
+          --generate-ssh-keys \
+          --enable-addons azure-keyvault-secrets-provider \
+          --node-vm-size Standard_DS2_v2 \
+          --node-count 1
+    
+    - name: Set up Federated Identity for Workload Identity
+      run: |
+        # Get the OIDC Issuer URL from the AKS cluster
+        OIDC_ISSUER=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --query "oidcIssuerProfile.issuerUrl" -o tsv)
+
+        # Create a federated identity credential in the managed identity
+        az identity federated-credential create \
+          --name $SERVICE_ACCOUNT \
+          --identity-name $MANAGED_IDENTITY_NAME \
+          --resource-group $RESOURCE_GROUP \
+          --issuer $OIDC_ISSUER \
+          --subject system:serviceaccount:$NAMESPACE:$SERVICE_ACCOUNT
+    
+    - name: Get AKS credentials
+      run: |
+        az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }}
+        kubelogin convert-kubeconfig -l azurecli
+    
+    - name: Generate a Self-Signed Certificate
+      run: |
+        # Create the certificate and key files
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout tls.key \
+          -out tls.crt \
+          -subj "/CN=fake-cert-manager-cert"
+
+        # Base64 encode the certificate and key
+        TLS_CRT=$(cat tls.crt | base64 -w 0)
+        TLS_KEY=$(cat tls.key | base64 -w 0)
+
+        # Create a Kubernetes secret with the fake certificate
+        kubectl create secret tls fake-cert-manager-secret \
+          --cert=tls.crt \
+          --key=tls.key \
+          --namespace default
+
+        # Annotate the secret as if it were created by cert-manager
+        kubectl annotate secret fake-cert-manager-secret \
+          cert-manager.io/certificate-name=fake-cert-manager-cert \
+          --namespace default
+
+    - name: Deploy Helm chart
+      run: |
+        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --values ./charts/cert-manager-key-vault-sync/values.yaml \
+          --namespace $NAMESPACE \
+          --create-namespace \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
+
+        echo "Helm template render:"
+        helm template cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --namespace $NAMESPACE \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
+        cat output.yaml
+    
+    - name: Run Tests
+      run: |
+        sleep 60
+
+        echo "Getting fake certificate from Secret..."
+        kubectl describe secret fake-cert-manager-secret -n default
+
+        echo "Getting deployment status..."
+        kubectl get deployments --namespace $NAMESPACE
+        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Getting logs from cert-manager-key-vault-sync..."
+        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Uninstalling Helm chart..."
+        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
+    
+    - name: Deploy Helm chart with namespace separation
+      run: |
+        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --values ./charts/cert-manager-key-vault-sync/values.yaml \
+          --namespace $NAMESPACE \
+          --create-namespace \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set useNamespaces="true" \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
+        
+        echo "Helm template render:"
+        helm template cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --namespace $NAMESPACE \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set useNamespaces="true" \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
+        cat output.yaml
+
+    - name: Run Tests
+      run: |
+        sleep 60
+
+        echo "Getting fake certificate from Secret..."
+        kubectl describe secret fake-cert-manager-secret -n default
+
+        echo "Getting deployment status..."
+        kubectl get deployments --namespace $NAMESPACE
+        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Getting logs from cert-manager-key-vault-sync..."
+        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Uninstalling Helm chart..."
+        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
+
+    - name: Delete AKS Cluster
+      if: always()
+      run: |
+        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --yes
+    
+    - name: Delete federated identity
+      if: always()
+      run: |
+        az identity federated-credential delete \
+          --name $SERVICE_ACCOUNT \
+          --identity-name $MANAGED_IDENTITY_NAME \
+          --resource-group $RESOURCE_GROUP \
+          --yes
