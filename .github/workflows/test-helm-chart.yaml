@@ -20,7 +20,7 @@ env:
     HELM_REGISTRY_SERVER: registry-1.docker.io
     KIND_VERSION: v0.24.0
     RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
-    CLUSTER_NAME: "aks-cert-manager-cluster"
+    CLUSTER_NAME: "aks-cmkvs-test"
     MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
     NAMESPACE: "cert-manager-key-vault-sync"
     SERVICE_ACCOUNT: "cert-manager-key-vault-sync"
