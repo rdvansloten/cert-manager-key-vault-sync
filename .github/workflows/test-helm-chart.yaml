@@ -129,7 +129,7 @@ jobs:
     - name: Run Tests
       run: |
         echo "Getting fake certificate from Secret..."
-        kubectl describe secret fake-cert-manager-secret -n cert-manager-key-vault-sync  # Verify the fake cert
+        kubectl describe secret fake-cert-manager-secret -n default
 
         echo "Getting deployment status..."
         kubectl get deployments --namespace cert-manager-key-vault-sync
