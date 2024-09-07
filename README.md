@@ -64,7 +64,7 @@ I'd love your input! I want to make contributing to this project as easy and tra
 - Becoming a maintainer.
 - Supporting my GitHub page:
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V0WI9MI)
+[<img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi donation button" width="200px">](https://ko-fi.com/V7V0WI9MI)
 
 ### All changes happen through Pull Requests
 
