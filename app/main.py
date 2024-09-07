@@ -165,13 +165,12 @@ def sync_k8s_secrets_to_key_vault():
                 else:
                     logging.info(f"Key Vault Certificate '{cert_name}' does not exist. Creating it.")
                     create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
-            elif compare_thumbprint(cert_data, certificate_client.get_certificate(cert_name).properties.x509_thumbprint.hex().upper().replace('X', 'x')):
-                if use_namespaces is True:
-                    logging.info(f"Thumbprint mismatch for Key Vault Certificate '{namespace}-{cert_name}'. Updating it.")
-                    create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
-                else:
-                    logging.info(f"Thumbprint mismatch for Key Vault Certificate '{cert_name}'. Updating it.")
-                    create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
+            elif use_namespaces is True and compare_thumbprint(cert_data, certificate_client.get_certificate(f"{namespace}-{cert_name}").properties.x509_thumbprint.hex().upper().replace('X', 'x')):
+                logging.info(f"Thumbprint mismatch for Key Vault Certificate '{namespace}-{cert_name}'. Updating it.")
+                create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
+            elif use_namespaces is False and compare_thumbprint(cert_data, certificate_client.get_certificate(cert_name).properties.x509_thumbprint.hex().upper().replace('X', 'x')):
+                logging.info(f"Thumbprint mismatch for Key Vault Certificate '{cert_name}'. Updating it.")
+                create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
             else:
                 if use_namespaces is True:
                     logging.debug(f"Key Vault Certificate '{namespace}-{cert_name}' is up-to-date.")
