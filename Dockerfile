@@ -9,7 +9,7 @@ RUN chown haro:corgis /app
 
 # Install openssl and build dependencies as root
 RUN apk upgrade --update-cache --available && \
-    apk add --no-cache openssl cargo gcc libc-dev libffi-dev && \
+    apk add --no-cache openssl cargo gcc libc-dev openssl-dev libffi-dev && \
     rm -rf /var/cache/apk/*
 
 # Switch to non-root user for the remaining steps
