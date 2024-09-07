@@ -63,7 +63,10 @@ jobs:
           --enable-workload-identity \
           --enable-managed-identity \
           --enable-oidc-issuer \
-          --generate-ssh-keys
+          --generate-ssh-keys \
+          --enable-addons azure-keyvault-secrets-provider \
+          --node-vm-size Standard_B2ls_v2 \
+          --node-count 1
     
     - name: Set up Federated Identity for Workload Identity
       run: |
@@ -115,4 +118,5 @@ jobs:
         az identity federated-credential delete \
           --name $SERVICE_ACCOUNT \
           --identity-name $MANAGED_IDENTITY_NAME \
-          --resource-group $RESOURCE_GROUP
+          --resource-group $RESOURCE_GROUP \
+          --yes
