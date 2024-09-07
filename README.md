@@ -33,8 +33,6 @@ helm upgrade --install cert-manager-key-vault-sync \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
 
-## Kubernetes Manifest
-
 If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
 
 ```sh
@@ -44,7 +42,7 @@ helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manag
 
 ## Examples
 
-For examples on building and prepping your Azure/Kubernetes environment, see [Examples](./EXAMPLES.md).
+For examples on building the image from scratch or prepping your Azure/Kubernetes environment, see [Examples](./EXAMPLES.md).
 
 ## Design
 

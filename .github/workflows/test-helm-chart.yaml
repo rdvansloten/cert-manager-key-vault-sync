@@ -55,7 +55,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -66,6 +66,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
       with:
+        platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8
         context: .
         push: true
         tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-run-${{ github.run_id }}
@@ -87,7 +88,7 @@ jobs:
       run: |
         az aks create \
           --resource-group $RESOURCE_GROUP \
-          --name $CLUSTER_NAME \
+          --name $CLUSTER_NAME-${{ github.run_id }} \
           --enable-workload-identity \
           --enable-managed-identity \
           --enable-oidc-issuer \
@@ -99,7 +100,7 @@ jobs:
     - name: Set up Federated Identity for Workload Identity
       run: |
         # Get the OIDC Issuer URL from the AKS cluster
-        OIDC_ISSUER=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query "oidcIssuerProfile.issuerUrl" -o tsv)
+        OIDC_ISSUER=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --query "oidcIssuerProfile.issuerUrl" -o tsv)
 
         # Create a federated identity credential in the managed identity
         az identity federated-credential create \
@@ -111,7 +112,7 @@ jobs:
     
     - name: Get AKS credentials
       run: |
-        az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+        az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }}
         kubelogin convert-kubeconfig -l azurecli
     
     - name: Generate a Self-Signed Certificate
@@ -230,7 +231,7 @@ jobs:
     - name: Delete AKS Cluster
       if: always()
       run: |
-        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --yes
+        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --yes
     
     - name: Delete federated identity
       if: always()
