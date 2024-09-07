@@ -9,7 +9,7 @@ RUN chown haro:corgis /app
 
 # Install openssl, required for certificate generation
 RUN apk upgrade --update-cache --available && \
-    apk add openssl && \
+    apk add openssl gcc libc-dev libffi-dev && \
     rm -rf /var/cache/apk/*
 
 # Switch to non-root user
