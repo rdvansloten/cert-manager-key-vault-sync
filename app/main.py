@@ -24,6 +24,9 @@ filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
 # Logging credentials initialization
 logging.info(f"Initializing with Client ID: {managed_identity_client_id}")
+logging.info(f"Using Key Vault: {key_vault_name}")
+logging.info(f"Using Key Vault URI: {key_vault_uri}")
+logging.info(f"Using Namespace separation: {use_namespaces}")
 
 # Initialize Key Vault client
 try:

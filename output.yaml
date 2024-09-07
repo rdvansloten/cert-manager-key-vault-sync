@@ -1,0 +1,90 @@
+---
+# Source: cert-manager-key-vault-sync/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-manager-key-vault-sync
+  namespace: default
+  annotations:
+    azure.workload.identity/client-id: 
+    azure.workload.identity/tenant-id: 
+  labels:
+    azure.workload.identity/use: "true"
+    app.kubernetes.io/name: cert-manager-key-vault-sync
+    app.kubernetes.io/instance: cert-manager-key-vault-sync
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: cert-manager-key-vault-sync/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-manager-key-vault-sync
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: cert-manager-key-vault-sync/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-manager-key-vault-sync
+subjects:
+- kind: ServiceAccount
+  name: cert-manager-key-vault-sync
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cert-manager-key-vault-sync
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: cert-manager-key-vault-sync/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-manager-key-vault-sync
+  namespace: default
+  labels:
+    app.kubernetes.io/name: cert-manager-key-vault-sync
+    app.kubernetes.io/instance: cert-manager-key-vault-sync
+    app.kubernetes.io/version: "v0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: cert-manager-key-vault-sync-0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager-key-vault-sync
+      app.kubernetes.io/instance: cert-manager-key-vault-sync
+  template:
+    metadata:
+      labels:
+        azure.workload.identity/use: "true"
+        app.kubernetes.io/name: cert-manager-key-vault-sync
+        app.kubernetes.io/instance: cert-manager-key-vault-sync
+    spec:
+      serviceAccountName: cert-manager-key-vault-sync
+      containers:
+        - name: cert-manager-key-vault-sync
+          image: "docker.io/rdvansloten/cert-manager-key-vault-sync:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MANAGED_IDENTITY_CLIENT_ID
+              value: 
+            - name: AZURE_KEY_VAULT_NAME
+              value: 
+            - name: CHECK_INTERVAL
+              value: "600"
+            - name: USE_NAMESPACES
+              value: "true"
+            - name: DEFAULT_LOGGING_LEVEL
+              value: "INFO"
+            - name: AZURE_LOGGING_LEVEL
+              value: "WARNING"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
