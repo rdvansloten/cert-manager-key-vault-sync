@@ -169,7 +169,7 @@ jobs:
     
     - name: Run Tests
       run: |
-        sleep 20
+        sleep 60
 
         echo "Getting fake certificate from Secret..."
         kubectl describe secret fake-cert-manager-secret -n default
@@ -210,7 +210,7 @@ jobs:
 
     - name: Run Tests
       run: |
-        sleep 20
+        sleep 60
 
         echo "Getting fake certificate from Secret..."
         kubectl describe secret fake-cert-manager-secret -n default
@@ -220,7 +220,6 @@ jobs:
         kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
 
         echo "Getting logs from cert-manager-key-vault-sync..."
-        
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
         echo "Uninstalling Helm chart..."
