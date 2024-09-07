@@ -115,7 +115,7 @@ helm upgrade --install cert-manager-key-vault-sync \
 
 ## Kubernetes Manifest
 
-If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML.
+If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
 
 ```sh
 helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync \

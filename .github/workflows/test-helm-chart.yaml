@@ -27,6 +27,7 @@ env:
 
 jobs:
   build:
+    name: Test Helm Chart on Azure Kubernetes Service
     runs-on: ubuntu-latest
 
     steps:
@@ -119,12 +120,40 @@ jobs:
       run: |
         helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
           --values ./charts/cert-manager-key-vault-sync/values.yaml \
-          --namespace cert-manager-key-vault-sync \
+          --namespace $NAMESPACE \
           --create-namespace \
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
           --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
+    
+    - name: Run Tests
+      run: |
+        echo "Getting fake certificate from Secret..."
+        kubectl describe secret fake-cert-manager-secret -n default
+
+        echo "Getting deployment status..."
+        kubectl get deployments --namespace $NAMESPACE
+
+        echo "Getting logs from cert-manager-key-vault-sync..."
+        sleep 30
+        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Uninstalling Helm chart..."
+        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
+    
+    - name: Deploy Helm chart with namespace separation
+      run: |
+        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --values ./charts/cert-manager-key-vault-sync/values.yaml \
+          --namespace $NAMESPACE \
+          --create-namespace \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set useNamespaces=true \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
+
 
     - name: Run Tests
       run: |
@@ -132,11 +161,14 @@ jobs:
         kubectl describe secret fake-cert-manager-secret -n default
 
         echo "Getting deployment status..."
-        kubectl get deployments --namespace cert-manager-key-vault-sync
+        kubectl get deployments --namespace $NAMESPACE
 
         echo "Getting logs from cert-manager-key-vault-sync..."
         sleep 30
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Uninstalling Helm chart..."
+        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
 
     - name: Delete AKS Cluster
       if: always()
