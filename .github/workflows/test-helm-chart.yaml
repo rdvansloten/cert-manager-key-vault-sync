@@ -141,7 +141,7 @@ jobs:
     - name: Delete AKS Cluster
       if: always()
       run: |
-        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --yes --no-wait
+        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --yes
     
     - name: Delete federated identity
       if: always()
