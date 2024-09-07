@@ -139,10 +139,12 @@ jobs:
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
     - name: Delete AKS Cluster
+      if: always()
       run: |
         az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --yes --no-wait
     
     - name: Delete federated identity
+      if: always()
       run: |
         az identity federated-credential delete \
           --name $SERVICE_ACCOUNT \
