@@ -18,7 +18,7 @@ logging.getLogger('azure').setLevel(getattr(logging, os.getenv("AZURE_LOGGING_LE
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
 key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
 managed_identity_client_id = os.getenv("MANAGED_IDENTITY_CLIENT_ID")
-use_namespaces = os.getenv("USE_NAMESPACES").lower() in ("true", "1", "yes", "enabled")
+use_namespaces = os.getenv("USE_NAMESPACES") in ("true", "1", "yes", "enabled")
 check_interval = int(os.getenv("CHECK_INTERVAL", 300))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
