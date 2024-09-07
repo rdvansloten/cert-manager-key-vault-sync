@@ -10,11 +10,20 @@ on:
       - 'app/**'
       - 'Dockerfile'
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
     IMAGE_NAME: cert-manager-key-vault-sync
     REPOSITORY_NAME: rdvansloten
     HELM_REGISTRY_SERVER: registry-1.docker.io
     KIND_VERSION: v0.24.0
+    RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
+    CLUSTER_NAME: "aks-cert-manager-cluster"
+    MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
+    NAMESPACE: "cert-manager-key-vault-sync"
+    SERVICE_ACCOUNT: "cert-manager-key-vault-sync"
 
 jobs:
   build:
@@ -23,6 +32,18 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Install Azure CLI
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        sudo az aks install-cli
+
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }}
+        tenant-id: ${{ secrets.TENANT_ID }}
+        subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
     - name: Log into Helm Registry
       run: | 
@@ -34,42 +55,64 @@ jobs:
         CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
         helm package ${{ env.IMAGE_NAME }}
     
-    # Step 1: Set up `kind` (Kubernetes in Docker)
-    - name: Install kind
+    - name: Create AKS Cluster with Workload Identity
       run: |
-        curl -Lo ./kind https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-linux-amd64
-        chmod +x ./kind
-        sudo mv ./kind /usr/local/bin/kind
+        az aks create \
+          --resource-group $RESOURCE_GROUP \
+          --name $CLUSTER_NAME \
+          --enable-workload-identity \
+          --enable-managed-identity \
+          --enable-oidc-issuer \
+          --generate-ssh-keys
     
-    - name: Create kind cluster
-      run: kind create cluster
-    
-    # Step 2: Install kubectl and Helm
-    - name: Install kubectl
+    - name: Set up Federated Identity for Workload Identity
       run: |
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x ./kubectl
-        sudo mv ./kubectl /usr/local/bin/kubectl
+        # Get the OIDC Issuer URL from the AKS cluster
+        OIDC_ISSUER=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query "oidcIssuerProfile.issuerUrl" -o tsv)
+
+        # Create a federated identity credential in the managed identity
+        az identity federated-credential create \
+          --name $SERVICE_ACCOUNT \
+          --identity-name $MANAGED_IDENTITY_NAME \
+          --resource-group $RESOURCE_GROUP \
+          --issuer $OIDC_ISSUER \
+          --subject system:serviceaccount:$NAMESPACE:$SERVICE_ACCOUNT
+    
+    - name: Get AKS credentials
+      run: |
+        az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+        kubelogin convert-kubeconfig -l azurecli
 
     - name: Install Helm
       uses: azure/setup-helm@v4.2.0
       with:
         version: 'v3.13.3'
       id: install
-    
-    # Step 3: Deploy Helm chart to kind cluster
+
     - name: Deploy Helm chart
       run: |
         helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
-          -f ./charts/cert-manager-key-vault-sync/values.yaml \
+          --values ./charts/cert-manager-key-vault-sync/values.yaml \
           --namespace cert-manager-key-vault-sync \
-          --create-namespace
+          --create-namespace \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
 
-    # Step 4: Run tests
     - name: Run Tests
       run: |
         kubectl get deployments --namespace cert-manager-key-vault-sync
+        sleep 30
+        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
-    # Step 5: Teardown kind cluster
-    - name: Delete kind cluster
-      run: kind delete cluster
+    - name: Delete AKS Cluster
+      run: |
+        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --yes --no-wait
+    
+    - name: Delete federated identity
+      run: |
+        az identity federated-credential delete \
+          --name $SERVICE_ACCOUNT \
+          --identity-name $MANAGED_IDENTITY_NAME \
+          --resource-group $RESOURCE_GROUP
