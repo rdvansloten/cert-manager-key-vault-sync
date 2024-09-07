@@ -65,7 +65,7 @@ jobs:
           --enable-oidc-issuer \
           --generate-ssh-keys \
           --enable-addons azure-keyvault-secrets-provider \
-          --node-vm-size Standard_B2ls_v2 \
+          --node-vm-size Standard_DS2_v2 \
           --node-count 1
     
     - name: Set up Federated Identity for Workload Identity
@@ -85,6 +85,29 @@ jobs:
       run: |
         az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
         kubelogin convert-kubeconfig -l azurecli
+    
+    - name: Generate a Self-Signed Certificate
+      run: |
+        # Create the certificate and key files
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout tls.key \
+          -out tls.crt \
+          -subj "/CN=fake-cert-manager-cert"
+
+        # Base64 encode the certificate and key
+        TLS_CRT=$(cat tls.crt | base64 -w 0)
+        TLS_KEY=$(cat tls.key | base64 -w 0)
+
+        # Create a Kubernetes secret with the fake certificate
+        kubectl create secret tls fake-cert-manager-secret \
+          --cert=tls.crt \
+          --key=tls.key \
+          --namespace default
+
+        # Annotate the secret as if it were created by cert-manager
+        kubectl annotate secret fake-cert-manager-secret \
+          cert-manager.io/certificate-name=fake-cert-manager-cert \
+          --namespace default
 
     - name: Install Helm
       uses: azure/setup-helm@v4.2.0
@@ -105,7 +128,13 @@ jobs:
 
     - name: Run Tests
       run: |
+        echo "Getting fake certificate from Secret..."
+        kubectl describe secret fake-cert-manager-secret -n cert-manager-key-vault-sync  # Verify the fake cert
+
+        echo "Getting deployment status..."
         kubectl get deployments --namespace cert-manager-key-vault-sync
+
+        echo "Getting logs from cert-manager-key-vault-sync..."
         sleep 30
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
