@@ -27,6 +27,11 @@ RUN apk del cargo gcc libc-dev libffi-dev && \
 # Copy the installed packages to a final image
 FROM python:3.12.4-alpine
 
+# Install openssl, required for certificate generation
+RUN apk upgrade --update-cache --available && \
+    apk add openssl && \
+    rm -rf /var/cache/apk/*
+
 # Create a non-root user and group in the final image
 RUN addgroup -S corgis && adduser -S haro -G corgis
 
