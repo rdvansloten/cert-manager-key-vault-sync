@@ -121,20 +121,12 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
         with open(pfx_file, "rb") as f:
             pfx_cert_bytes = f.read()
         
-        if use_namespaces is True:
-            logging.info(f"Writing Secret {namespace}-{cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
-            imported_pfx_cert = certificate_client.import_certificate(certificate_name=f"{namespace}-{cert_name}", certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
-        else:
-            logging.info(f"Writing Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
-            imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
-        
+        logging.info(f"Writing Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
+        imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
         logging.info(f"PFX certificate '{imported_pfx_cert.name}' imported successfully.")
 
     except Exception as e:
-        if use_namespaces is True:
-            error = f"Failed to sync Secret {namespace}-{cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
-        else:
-            error = f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
+        error = f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}"
         logging.error(error)
     
     finally:
