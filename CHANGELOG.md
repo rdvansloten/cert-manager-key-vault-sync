@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests on an ephemeral AKS cluster, Key Vault and Managed Identity
 - Documentation to render the Helm chart as Kubernetes manifests ([#3](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/3))
 - A `CHANGELOG.md` file
+- Support for `linux/arm/v7`, `linux/arm64/v8` (MacOS M1)
 
 ### Fixed
 
