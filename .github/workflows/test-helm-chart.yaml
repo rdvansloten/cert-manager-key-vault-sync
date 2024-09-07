@@ -68,7 +68,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-job-$GITHUB_RUN_ID
+        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-job-${{ github.run_id }}
 
     - name: Logout from Docker Hub
       run: docker logout
@@ -150,7 +150,7 @@ jobs:
           --namespace $NAMESPACE \
           --create-namespace \
           --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-job-$GITHUB_RUN_ID \
+          --set image.tag=gh-job-${{ github.run_id }} \
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
