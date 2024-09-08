@@ -31,7 +31,7 @@ jobs:
     - name: Read version from YAML
       id: read_version
       run: |
-        version=$(yq eval '.version' meta.yaml)
+        version=$(yq eval '.appVersion' ./charts/cert-manager-key-vault-sync/Chart.yaml)
         echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Set up Docker Buildx

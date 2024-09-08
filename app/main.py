@@ -1,14 +1,14 @@
 import os
 import base64
 import re
-import time
 import logging
 import subprocess
 
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.certificates import CertificateClient
 from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
-from kubernetes import client, config
+from kubernetes import client, config, watch
+import kopf
 
 # Configure logging
 logging.basicConfig(level=getattr(logging, os.getenv("DEFAULT_LOGGING_LEVEL", "INFO")), format='%(asctime)s - %(levelname)s - %(message)s')
@@ -177,15 +177,19 @@ def sync_k8s_secrets_to_key_vault():
                 else:
                     logging.debug(f"Key Vault Certificate '{cert_name}' is up-to-date.")
 
-def main():
+@kopf.on.startup()
+def on_startup_fn(**kwargs):
     logging.info("Starting cert-manager-key-vault-sync process.")
     load_initial_state()
-    
-    # Loop to synchronize Kubernetes secrets to Key Vault
-    while True:
-        sync_k8s_secrets_to_key_vault()
-        logging.debug(f"Waiting for {check_interval} seconds.")
-        time.sleep(check_interval)
+
+@kopf.on.timer("secrets", interval=check_interval)
+def on_timer(**kwargs):
+    logging.info("Synchronizing Kubernetes Secrets to Key Vault.")
+    sync_k8s_secrets_to_key_vault()
+    logging.debug(f"Waiting for {check_interval} seconds.")
+
+def main():
+    kopf.run()
 
 if __name__ == "__main__":
     main()

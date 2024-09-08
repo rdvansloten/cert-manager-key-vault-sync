@@ -2,3 +2,4 @@ azure-identity==1.17.1
 azure-keyvault-certificates==4.8.0
 kubernetes==30.1.0
 pyyaml==6.0.2
+kopf==1.37.2
