@@ -1,4 +1,4 @@
-FROM python:3.12.4-alpine as builder
+FROM python:3.12.4-alpine AS builder
 
 # Create a non-root user and group
 RUN addgroup -S corgis && adduser -S haro -G corgis

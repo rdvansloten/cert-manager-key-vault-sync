@@ -31,13 +31,13 @@ jobs:
     - name: Read version from YAML
       id: read_version
       run: |
-        version=$(yq eval '.version' meta.yaml)
+        version=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep appVersion | awk '{print $2}')
         echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
-        platforms: linux/amd64,linux/arm64,linux/arm64/v8
+        platforms: linux/amd64,linux/arm64
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -48,7 +48,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
       with:
-        platforms: linux/amd64,linux/arm64,linux/arm64/v8
+        platforms: linux/amd64,linux/arm64
         context: .
         push: true
         tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:latest, ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}
