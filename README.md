@@ -29,7 +29,7 @@ export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
     oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
     --values ./charts/cert-manager-key-vault-sync/values.yaml \
-    --version 0.2.0 \
+    --version "v0.2.0" \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
 
