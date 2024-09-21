@@ -17,20 +17,18 @@ logging.getLogger('azure').setLevel(getattr(logging, os.getenv("AZURE_LOGGING_LE
 # Set variables
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
 key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
-managed_identity_client_id = os.getenv("MANAGED_IDENTITY_CLIENT_ID")
 use_namespaces = os.getenv("USE_NAMESPACES") in ("true", "1", "yes", "enabled")
 check_interval = int(os.getenv("CHECK_INTERVAL", 300))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
 # Logging credentials initialization
-logging.info(f"Initializing with Client ID: {managed_identity_client_id}")
 logging.info(f"Using Key Vault: {key_vault_name}")
 logging.info(f"Using Key Vault URI: {key_vault_uri}")
 logging.info(f"Using Namespace separation: {use_namespaces}")
 
 # Initialize Key Vault client
 try:
-    credential = DefaultAzureCredential(managed_identity_client_id=managed_identity_client_id, exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
+    credential = DefaultAzureCredential(exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
     certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
 
     # Test connection by making a small request
