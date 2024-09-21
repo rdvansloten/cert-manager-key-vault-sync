@@ -60,7 +60,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
-        platforms: linux/amd64,linux/arm64,linux/arm64/v8
+        platforms: linux/amd64,linux/arm64
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -71,7 +71,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
       with:
-        platforms: linux/amd64,linux/arm64,linux/arm64/v8
+        platforms: linux/amd64,linux/arm64
         context: .
         push: true
         tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-run-${{ github.run_id }}
@@ -167,7 +167,7 @@ jobs:
           --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
         cat output.yaml
     
-    - name: Run Tests
+    - name: Run Tests for global Certificates
       run: |
         sleep 60
 
@@ -210,7 +210,7 @@ jobs:
           --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
         cat output.yaml
 
-    - name: Run Tests
+    - name: Run Tests for namespaced Certificates
       run: |
         sleep 60
 
@@ -226,6 +226,14 @@ jobs:
 
         echo "Uninstalling Helm chart..."
         helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
+
+    - name: Display Key Vault Certificates
+      if: always()
+      run: |
+        az keyvault certificate list \
+          --vault-name ${{ secrets.KEY_VAULT_NAME }} \
+          --query "[].{Name:name, Created:attributes.created, Thumbprint:x509ThumbprintHex}" \
+          --output table
 
     - name: Delete AKS Cluster
       if: always()

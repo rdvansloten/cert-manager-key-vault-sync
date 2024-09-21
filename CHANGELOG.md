@@ -9,12 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Env variable for managed identity in main.py, this is auto-loaded ([#6](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/6))
+- Env variable for managed identity in `main.py`, this is auto-loaded now ([#6](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/6))
+- Env variable for managed identity in `charts/cert-manager-key-vault-sync/templates/deployment.yaml`, this is auto-loaded in `main.py` ([#6](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/6))
 
 ### Changed
 
 - Prefixed Helm version with `v` to match app version
 - Adjusted `build-push-image.yaml` to read app version from `Chart.yaml`
+
+### Fixed
+
+- Lowercase `as` to uppercase `AS` in `./Dockerfile` to solve `WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 1)`
+- Duplicate `arm64` request to solve `Duplicate platform result requested "linux/arm64"`
 
 ## [v0.1.0] - 2024-09-07
 
@@ -23,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests on an ephemeral AKS cluster, Key Vault and Managed Identity
 - Documentation to render the Helm chart as Kubernetes manifests ([#3](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/3))
 - A `CHANGELOG.md` file
-- Support for `linux/arm/v7`, `linux/arm64/v8` (MacOS M1)
+- Support for `linux/arm64` (MacOS M1, Linux)
 
 ### Fixed
 

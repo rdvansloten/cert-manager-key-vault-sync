@@ -28,8 +28,6 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: MANAGED_IDENTITY_CLIENT_ID
-              value: {{ .Values.azure.workloadIdentity.clientId }}
             - name: AZURE_KEY_VAULT_NAME
               value: {{ .Values.azure.keyVaultName }}
             - name: CHECK_INTERVAL
