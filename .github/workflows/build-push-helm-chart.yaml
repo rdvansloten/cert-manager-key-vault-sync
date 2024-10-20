@@ -33,3 +33,8 @@ jobs:
         CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
         helm package ${{ env.IMAGE_NAME }}
         helm push $IMAGE_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}
+
+        # Also push latest
+        sed -i 's/^version: .*/version: latest/' ./${{ env.IMAGE_NAME }}/Chart.yaml
+        CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
+        helm push $IMAGE_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}
