@@ -65,9 +65,7 @@ I'd love your input! I want to make contributing to this project as easy and tra
 - Submitting [a fix](https://github.com/rdvansloten/cert-manager-key-vault-sync/compare).
 - Proposing [new features](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/new?assignees=&labels=enhancement&template=feature_request.yml).
 - Becoming a maintainer.
-- Supporting my GitHub page:
-
-[<img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi donation button" width="200px">](https://ko-fi.com/V7V0WI9MI)
+- Supporting my GitHub page through [GitHub Sponsors](https://github.com/sponsors/rdvansloten) or [ko-fi](https://ko-fi.com/V7V0WI9MI).
 
 ### All changes happen through Pull Requests
 
