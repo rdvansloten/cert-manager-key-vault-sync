@@ -30,16 +30,3 @@ jobs:
         context: .
         push: false
         tags: ${{ github.repository }}:gh-run-${{ github.run_id }}
-    
-    - name: Remove test Docker image from remote
-      run: |
-        username=${{ secrets.DOCKER_USERNAME }}
-        password=${{ secrets.DOCKER_PAT }}
-        github_run_id=${{ github.run_id }}
-        account_name=${{ secrets.DOCKER_USERNAME }}
-        repository_name="cert-manager-key-vault-sync"
-
-        # Authenticate and delete remote image
-        token=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": $username, "password": $password}' https://hub.docker.com/v2/users/login/ | jq -r .token)
-        image_digest=$(curl -s -H "Authorization: Bearer $token" "https://hub.docker.com/v2/repositories/$account_name/$repository_name/tags/$github_run_id/" | jq -r .images[0].digest)
-        curl -s -X DELETE -H "Authorization: Bearer $token" "https://hub.docker.com/v2/repositories/$account_name/$repository_name/manifests/$image_digest/"

@@ -18,7 +18,6 @@ env:
     IMAGE_NAME: cert-manager-key-vault-sync
     REPOSITORY_NAME: rdvansloten
     HELM_REGISTRY_SERVER: registry-1.docker.io
-    KIND_VERSION: v0.24.0
     RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
     CLUSTER_NAME: "aks-cmkvs-test"
     MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
@@ -75,9 +74,6 @@ jobs:
         context: .
         push: true
         tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-run-${{ github.run_id }}
-
-    - name: Logout from Docker Hub
-      run: docker logout
 
     - name: Log into Helm Registry
       run: | 
@@ -248,3 +244,12 @@ jobs:
           --identity-name $MANAGED_IDENTITY_NAME \
           --resource-group $RESOURCE_GROUP \
           --yes
+    
+    - name: Delete test Docker image from remote
+      run: |
+        DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PAT=${{ secrets.DOCKER_PAT }}
+
+        TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": $DOCKER_USERNAME, "password": $DOCKER_PAT}' https://hub.docker.com/v2/users/login/ | jq -r .token)
+        IMAGE_DIGEST=$(curl -s -H "Authorization: Bearer $TOKEN" "https://hub.docker.com/v2/repositories/$REPOSITORY_NAME/$IMAGE_NAME/tags/$github_run_id/" | jq -r .images[0].digest)
+        curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "https://hub.docker.com/v2/repositories/$REPOSITORY_NAME/$IMAGE_NAME/manifests/$IMAGE_DIGEST/"
