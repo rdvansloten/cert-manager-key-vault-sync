@@ -9,6 +9,7 @@ replicaCount: 1
 checkInterval: 600
 
 # Is set to true, the namespace name is appended to the certificate name in the Key Vault
+# Be aware that having duplicate certificate names in different namespaces will cause constant sync issues
 useNamespaces: "false"
 
 azure:
@@ -21,6 +22,10 @@ azure:
     clientId: ""
     subscriptionId: ""
     tenantId: ""
+
+# Image Pull Secrets, applied to the Service Account 
+# Remember, this has to be in the same namespace as the Service Account
+imagePullSecrets: []
 
 loggingLevels:
   # Controls the logging level for the Python application
