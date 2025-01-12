@@ -4,7 +4,11 @@ import re
 import time
 import logging
 import subprocess
+import json
+import requests
+import threading
 
+from packaging import version
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.certificates import CertificateClient
 from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
@@ -21,6 +25,13 @@ use_namespaces = os.getenv("USE_NAMESPACES") in ("true", "1", "yes", "enabled")
 check_interval = int(os.getenv("CHECK_INTERVAL", 300))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
+# Set version check information
+github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
+github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync") 
+version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
+current_version = "v0.2.0"
+check_version = os.getenv("CHECK_VERSION", "true").lower()
+
 # Logging credentials initialization
 logging.info(f"Using Key Vault: {key_vault_name}")
 logging.info(f"Using Key Vault URI: {key_vault_uri}")
@@ -31,11 +42,11 @@ try:
     credential = DefaultAzureCredential(exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
     certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
 
-    # Test connection by making a small request
-    logging.info("Detected Key Vault Certificates:")
+    # List installed certificates
+    logging.debug("Detected Key Vault Certificates:")
     certificate_client.list_properties_of_certificates(max_page_size=1)
     for cert in certificate_client.list_properties_of_certificates():
-        logging.info(f"- {cert.name}")
+        logging.debug(f"- {cert.name}")
 
     logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
 
@@ -97,12 +108,12 @@ def load_initial_state():
     try:
         k8s_client.list_secret_for_all_namespaces()
         logging.info("Connection to Kubernetes successful.")
-        logging.info("Detected Secrets:")
+        logging.debug("Detected Secrets:")
         secrets = k8s_client.list_secret_for_all_namespaces()
         for secret in secrets.items:
             annotations = secret.metadata.annotations
             if annotations and filter_annotation in annotations:
-                logging.info(f"- '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'")
+                logging.debug(f"- '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'")
 
     except Exception as e:
         logging.error(f"Failed to load Secrets from Kubernetes: {str(e)}")
@@ -134,51 +145,106 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
         os.remove("cert.pem")
 
 def sync_k8s_secrets_to_key_vault():
-    secrets = k8s_client.list_secret_for_all_namespaces()
-    for secret in secrets.items:
-        annotations = secret.metadata.annotations
+    response = k8s_client.list_secret_for_all_namespaces(_preload_content=False)
+
+    # Parse JSON response
+    secrets_data = json.loads(response.data.decode('utf-8'))
+
+    if not secrets_data.get('items'):
+        logging.warning("No Kubernetes secrets found with the required annotations.")
+
+    for secret in secrets_data.get('items', []):  # Safely get items list
+        metadata = secret.get('metadata', {})
+        annotations = metadata.get('annotations', {})
+
         if annotations and filter_annotation in annotations:
             cert_name = annotations[filter_annotation]
-            namespace = secret.metadata.namespace
+            namespace = metadata.get('namespace')
 
             # Extract certificate data
-            cert_data = base64.b64decode(secret.data['tls.crt'])
-            key_data = base64.b64decode(secret.data['tls.key'])
+            secret_data = secret.get('data', {})
+            cert_data = base64.b64decode(secret_data.get('tls.crt', ''))
+            key_data = base64.b64decode(secret_data.get('tls.key', ''))
 
             # Check if the certificate exists in Key Vault
             certificate_exists = True
-            
+
             try:
-                if use_namespaces is True:
+                if use_namespaces:
                     certificate_client.get_certificate(f"{namespace}-{cert_name}")
                 else:
                     certificate_client.get_certificate(cert_name)
-            except ResourceNotFoundError as e:
+            except ResourceNotFoundError:
                 certificate_exists = False
-            
-            if certificate_exists is False:
-                if use_namespaces is True:
+
+            if not certificate_exists:
+                if use_namespaces:
                     logging.info(f"Key Vault Certificate '{namespace}-{cert_name}' does not exist. Creating it.")
                     create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
                 else:
                     logging.info(f"Key Vault Certificate '{cert_name}' does not exist. Creating it.")
                     create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
-            elif use_namespaces is True and compare_thumbprint(cert_data, certificate_client.get_certificate(f"{namespace}-{cert_name}").properties.x509_thumbprint.hex().upper().replace('X', 'x')):
+            elif use_namespaces and compare_thumbprint(cert_data, certificate_client.get_certificate(f"{namespace}-{cert_name}").properties.x509_thumbprint.hex().upper().replace('X', 'x')):
                 logging.info(f"Thumbprint mismatch for Key Vault Certificate '{namespace}-{cert_name}'. Updating it.")
                 create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
-            elif use_namespaces is False and compare_thumbprint(cert_data, certificate_client.get_certificate(cert_name).properties.x509_thumbprint.hex().upper().replace('X', 'x')):
+            elif not use_namespaces and compare_thumbprint(cert_data, certificate_client.get_certificate(cert_name).properties.x509_thumbprint.hex().upper().replace('X', 'x')):
                 logging.info(f"Thumbprint mismatch for Key Vault Certificate '{cert_name}'. Updating it.")
                 create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
             else:
-                if use_namespaces is True:
+                if use_namespaces:
                     logging.debug(f"Key Vault Certificate '{namespace}-{cert_name}' is up-to-date.")
                 else:
                     logging.debug(f"Key Vault Certificate '{cert_name}' is up-to-date.")
 
+from packaging import version
+
+def check_for_new_version():
+    """Checks GitHub for a new release version and logs a warning if a newer version is available."""
+    if check_version in ("false", "0", "no", "disabled"):
+        logging.info("Version check is disabled.")
+        return
+
+    try:
+        url = f"https://api.github.com/repos/{github_repository_owner}/{github_repository_name}/releases/latest"
+        response = requests.get(url, headers={"Accept": "application/vnd.github.v3+json"}, timeout=10)
+
+        if response.status_code == 200:
+            latest_version = response.json().get("tag_name", "").strip()
+
+            # Remove the 'v' prefix if present
+            latest_version_clean = latest_version.lstrip("v")
+            current_version_clean = current_version.lstrip("v")
+
+            # Compare versions correctly
+            if latest_version_clean and version.parse(latest_version_clean) > version.parse(current_version_clean):
+                logging.warning(f"A new version {latest_version} is available! (Current: {current_version})")
+            else:
+                logging.info(f"Running the latest version: {current_version}")
+        else:
+            logging.error(f"Failed to check latest version: {response.status_code} for {url} - {response.text}")
+
+    except Exception as e:
+        logging.error(f"Error checking for updates: {e}")
+
+
+def schedule_version_check():
+    """Runs the version check once at startup and every 24 hours in the background."""
+    check_for_new_version()
+
+    def periodic_check():
+        while True:
+            time.sleep(int(version_check_interval))
+            check_for_new_version()
+
+    # Start background thread for daily version check
+    version_check_thread = threading.Thread(target=periodic_check, daemon=True)
+    version_check_thread.start()
+
 def main():
     logging.info("Starting cert-manager-key-vault-sync process.")
+    schedule_version_check()
     load_initial_state()
-    
+
     # Loop to synchronize Kubernetes secrets to Key Vault
     while True:
         sync_k8s_secrets_to_key_vault()

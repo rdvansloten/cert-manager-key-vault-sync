@@ -1,4 +1,4 @@
-FROM python:3.12.4-alpine AS builder
+FROM python:3.13-alpine3.21 AS builder
 
 # Create a non-root user and group
 RUN addgroup -S corgis && adduser -S haro -G corgis
@@ -25,7 +25,7 @@ RUN apk del cargo gcc libc-dev libffi-dev && \
     rm -rf /var/cache/apk/*
 
 # Copy the installed packages to a final image
-FROM python:3.12.4-alpine
+FROM python:3.13-alpine3.21
 
 # Install openssl, required for certificate generation
 RUN apk upgrade --update-cache --available && \
