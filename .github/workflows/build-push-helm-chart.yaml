@@ -11,9 +11,9 @@ on:
       - 'Dockerfile'
 
 env:
-    IMAGE_NAME: cert-manager-key-vault-sync
-    REPOSITORY_NAME: rdvansloten
-    HELM_REGISTRY_SERVER: registry-1.docker.io
+  IMAGE_NAME: cert-manager-key-vault-sync
+  REPOSITORY_NAME: rdvansloten
+  HELM_REGISTRY_SERVER: registry-1.docker.io
 
 jobs:
   build:

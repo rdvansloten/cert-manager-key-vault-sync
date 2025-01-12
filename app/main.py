@@ -9,7 +9,7 @@ import requests
 import threading
 
 from packaging import version
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, ClientSecretCredential
 from azure.keyvault.certificates import CertificateClient
 from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
 from kubernetes import client, config
