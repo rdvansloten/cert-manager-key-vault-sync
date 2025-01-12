@@ -177,18 +177,20 @@ jobs:
         echo "Getting logs from cert-manager-key-vault-sync..."
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
-        echo "Uninstalling Helm chart..."
-        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
-
         echo "Checking for crash looping..."
         RESTART_COUNT=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].status.containerStatuses[0].restartCount}")
 
         if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
           echo "Pod is crash looping. Restart count: $RESTART_COUNT"
-          exit 1
         else
           echo "Pod is running normally. Restart count: $RESTART_COUNT"
-          exit 0
+        fi
+
+        echo "Uninstalling Helm chart..."
+        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
+          exit 1
         fi
     
     - name: Deploy Helm chart with namespace separation
@@ -231,18 +233,17 @@ jobs:
         echo "Getting logs from cert-manager-key-vault-sync..."
         kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
 
+        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
+          echo "Pod is crash looping. Restart count: $RESTART_COUNT"
+        else
+          echo "Pod is running normally. Restart count: $RESTART_COUNT"
+        fi
+
         echo "Uninstalling Helm chart..."
         helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
 
-        echo "Checking for crash looping..."
-        RESTART_COUNT=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].status.containerStatuses[0].restartCount}")
-
         if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
-          echo "Pod is crash looping. Restart count: $RESTART_COUNT"
           exit 1
-        else
-          echo "Pod is running normally. Restart count: $RESTART_COUNT"
-          exit 0
         fi
 
     - name: Display Key Vault Certificates
