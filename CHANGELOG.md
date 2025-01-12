@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `sync_k8s_secrets_to_key_vault()` has been rewritten to prevent memory leaks when processing increasing amounts of certificates. Can now process 1000-2000 certificates and stay under 128MiB usage
+- Set `runs-on: ubuntu-22.04` in GitHub Workflows from `runs-on: latest` due to unavailable package providers during testing
 
 ## [v0.1.1] - 2024-09-21
 

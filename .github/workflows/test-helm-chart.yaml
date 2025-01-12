@@ -27,7 +27,7 @@ env:
 jobs:
   build:
     name: Test Helm Chart on Azure Kubernetes Service
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout repository
