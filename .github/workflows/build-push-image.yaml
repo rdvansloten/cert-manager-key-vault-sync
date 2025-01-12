@@ -11,8 +11,8 @@ on:
       - 'Dockerfile'
 
 env:
-    IMAGE_NAME: cert-manager-key-vault-sync
-    REPOSITORY_NAME: rdvansloten
+  IMAGE_NAME: cert-manager-key-vault-sync
+  REPOSITORY_NAME: rdvansloten
 
 jobs:
   build-and-push:

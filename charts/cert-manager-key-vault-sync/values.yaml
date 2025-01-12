@@ -1,27 +1,31 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v0.2.0
+  tag: v1.0.0
   pullPolicy: IfNotPresent
 
 replicaCount: 1
 
-# Interval in seconds to check for new certificates
-checkInterval: 600
-
-# Is set to true, the namespace name is appended to the certificate name in the Key Vault
-# Be aware that having duplicate certificate names in different namespaces will cause constant sync issues
-useNamespaces: "false"
+certificates:
+  annotation: "cert-manager.io/certificate-name"
+  # Is set to true, the namespace name is appended to the certificate name in the Key Vault
+  # Be aware that having duplicate certificate names in different namespaces will cause constant sync issues
+  useNamespaces: "false"
+  # Interval in seconds to check for new certificates
+  checkInterval: 600
 
 azure:
   # Name of the Key Vault, do not enter the full URI here
-  keyVaultName: "kvtestkvcsm"
+  keyVaultName: ""
 
   # Properties of the Managed Identity used to access the Key Vault
   # Ensure that the Managed Identity has at least Key Vault Certificates Officer permissions
   workloadIdentity:
-    clientId: "143424dd-9491-4c4f-931a-95c661e7ea5e"
-    subscriptionId: "865f86e6-0a9a-4c2f-8742-ce207e509dad"
-    tenantId: "a1218954-d03b-40f0-a1d7-173a4944b29e"
+    clientId:
+    subscriptionId:
+    tenantId:
+    # This may be used to fall back to SPN authentication if Managed Identity is not available on your platform
+    # Update the clientId and clientSecret with the Service Principal details
+    clientSecret: # Name of the Kubernetes Secret. Must be in the same namespace as this Chart
 
 # Image Pull Secrets, applied to the Service Account 
 # Remember, this has to be in the same namespace as the Service Account
