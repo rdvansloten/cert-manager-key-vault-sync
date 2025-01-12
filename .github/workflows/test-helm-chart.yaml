@@ -174,77 +174,31 @@ jobs:
         kubectl get deployments --namespace $NAMESPACE
         kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
 
-        echo "Getting logs from cert-manager-key-vault-sync..."
-        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
+        echo "Getting pod information..."
+        POD_NAME=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].metadata.name}")
+        RESTART_COUNT=$(kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath="{.status.containerStatuses[0].restartCount}")
 
-        echo "Checking for crash looping..."
-        RESTART_COUNT=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].status.containerStatuses[0].restartCount}")
+        echo "Pod Name: $POD_NAME"
+        echo "Restart Count: $RESTART_COUNT"
+
+        echo "Getting detailed pod description..."
+        kubectl describe pod $POD_NAME -n $NAMESPACE
+
+        echo "Fetching events related to the pod..."
+        kubectl get events -n $NAMESPACE --sort-by=.lastTimestamp | grep $POD_NAME
+
+        echo "Getting logs from cert-manager-key-vault-sync..."
+        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE --previous || echo "No previous logs found"
 
         if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
           echo "Pod is crash looping. Restart count: $RESTART_COUNT"
+          exit 1
         else
           echo "Pod is running normally. Restart count: $RESTART_COUNT"
         fi
 
         echo "Uninstalling Helm chart..."
         helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
-
-        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
-          exit 1
-        fi
-    
-    - name: Deploy Helm chart with namespace separation
-      run: |
-        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
-          --values ./charts/cert-manager-key-vault-sync/values.yaml \
-          --namespace $NAMESPACE \
-          --create-namespace \
-          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-run-${{ github.run_id }} \
-          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
-          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
-          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
-          --set useNamespaces="true" \
-          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
-        
-        echo "Helm template render:"
-        helm template cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
-          --namespace $NAMESPACE \
-          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-run-${{ github.run_id }} \
-          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
-          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
-          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
-          --set useNamespaces="true" \
-          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
-        cat output.yaml
-
-    - name: Run Tests for namespaced Certificates
-      run: |
-        sleep 90
-
-        echo "Getting fake certificate from Secret..."
-        kubectl describe secret fake-cert-manager-secret -n default
-
-        echo "Getting deployment status..."
-        kubectl get deployments --namespace $NAMESPACE
-        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
-
-        echo "Getting logs from cert-manager-key-vault-sync..."
-        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE
-
-        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
-          echo "Pod is crash looping. Restart count: $RESTART_COUNT"
-        else
-          echo "Pod is running normally. Restart count: $RESTART_COUNT"
-        fi
-
-        echo "Uninstalling Helm chart..."
-        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
-
-        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
-          exit 1
-        fi
 
     - name: Display Key Vault Certificates
       if: always()
