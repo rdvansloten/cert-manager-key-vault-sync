@@ -211,7 +211,7 @@ jobs:
 
     - name: Deploy Helm Chart with Service Principal
       run: |
-        kubectl create secret "cert-manager-key-vault-sync-secret" \
+        kubectl create secret generic "cert-manager-key-vault-sync-secret" \
           --from-literal=clientSecret="${{ secrets.SPN_CLIENT_SECRET }}" \
           --namespace $NAMESPACE
 
