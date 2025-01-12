@@ -1,6 +1,6 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v0.1.1
+  tag: v0.2.0
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -14,14 +14,14 @@ useNamespaces: "false"
 
 azure:
   # Name of the Key Vault, do not enter the full URI here
-  keyVaultName: ""
+  keyVaultName: "kvtestkvcsm"
 
   # Properties of the Managed Identity used to access the Key Vault
   # Ensure that the Managed Identity has at least Key Vault Certificates Officer permissions
   workloadIdentity:
-    clientId: ""
-    subscriptionId: ""
-    tenantId: ""
+    clientId: "143424dd-9491-4c4f-931a-95c661e7ea5e"
+    subscriptionId: "865f86e6-0a9a-4c2f-8742-ce207e509dad"
+    tenantId: "a1218954-d03b-40f0-a1d7-173a4944b29e"
 
 # Image Pull Secrets, applied to the Service Account 
 # Remember, this has to be in the same namespace as the Service Account
@@ -33,15 +33,23 @@ loggingLevels:
   # Controls the logging level for the Azure SDK components
   azure: "WARNING"
 
-# These resources should be plenty, only raise if you have a huge amount
-# of certificates and get OOMKilled errors
+# These resources should be plenty, only raise if you have a huge amount of certificates and get OOMKilled errors
+# From preliminary testing, 128Mi should support up to 1500 unique certificates
 resources:
-  limits:
-    cpu: 100m
-    memory: 256Mi
   requests:
     cpu: 50m
     memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Version check settings, you can change these to your self-hosted repository
+# Be aware that it uses GitHub Releases to check for new versions, not git tags
+versionCheck:
+  enabled: "true"
+  interval: 86400
+  github_repository_owner: "rdvansloten"
+  github_repository_name: "cert-manager-key-vault-sync"
 
 nodeSelector: {}
 tolerations: []

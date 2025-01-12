@@ -38,6 +38,15 @@ spec:
               value: "{{ .Values.loggingLevels.default | default "INFO" | upper }}"
             - name: AZURE_LOGGING_LEVEL
               value: "{{ .Values.loggingLevels.azure | default "WARNING" | upper }}"
+            - name: GITHUB_REPO_OWNER
+              value: "{{ .Values.versionCheck.github_repository_owner | default "rdvansloten" }}"
+            - name: GITHUB_REPO_NAME
+              value: "{{ .Values.versionCheck.github_repository_name | default "cert-manager-key-vault-sync" }}"
+            - name: VERSION_CHECK_INTERVAL
+              value: "{{ .Values.versionCheck.interval | default 86400 }}"
+            - name: CHECK_VERSION
+              value: "{{ .Values.versionCheck.enabled | default "true" | lower }}"
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

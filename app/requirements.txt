@@ -1,4 +1,5 @@
-azure-identity==1.17.1
-azure-keyvault-certificates==4.8.0
-kubernetes==30.1.0
-pyyaml==6.0.2
+azure-identity==1.*
+azure-keyvault-certificates==4.*
+kubernetes==30.*
+requests==2.*
+packaging==24.*

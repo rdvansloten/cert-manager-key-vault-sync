@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0] - 2025-01-12
+
+### Added
+
+- Version check of the application at startup, and hourly afterwards. This log can be used for alerting in your log processor of choice. Can be opted out of using `versionCheck.enabled: false` in the Helm chart
+- Packages `requests`, `packaging` and `threading`
+
+### Removed
+
+- `pyyaml` requirement, this is now unused after several changes
+
+### Changed
+
+- Upgraded to Python `3.13` from `3.12.4`
+- Upgraded to alphine `3.21` from `unconstrained`
+- Tests in GitHub Workflow [test-helm-chart.yaml](./.github/workflows/test-helm-chart.yaml) to check for Pod crashing
+- Bumped package `azure-identity` package to `1.*` from `1.17.1`
+- Bumped package `azure-keyvault-certificates` `4.*` from `4.8.0`
+- Bumped package `kubernetes` to `30.*` from `30.10.0`
+
+### Fixed
+
+- `sync_k8s_secrets_to_key_vault()` has been rewritten to prevent memory leaks when processing increasing amounts of certificates. Can now process 1000-2000 certificates and stay under 128MiB usage
+
 ## [v0.1.1] - 2024-09-21
 
 ### Removed

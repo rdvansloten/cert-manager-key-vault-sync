@@ -4,8 +4,8 @@ Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azu
 
 | Component   | Version | Status                                                                                                                                                                                                                                      |
 | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Helm Chart  | v0.2.2  | [![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml) |
-| Application | v0.1.1  | [![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml)         |
+| Helm Chart  | v0.3.0  | [![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml) |
+| Application | v0.2.0  | [![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml)         |
 
 ## Features
 
@@ -14,8 +14,12 @@ Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azu
 - Leverages passwordless authentication using [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
 - Certificate is automatically rotated when cert-manager triggers a renewal
 - Supports duplicate certificates in multiple Kubernetes Namespaces (e.g. `*.your-domain.com` in multiple Namespaces)
-- Runs in a lightweight Alpine container, using < 100 MiB of memory
+- Runs in a lightweight Alpine container, generally using < 128 MiB of memory
 - Includes a [Helm Chart](#helm-installation) for easy installation
+
+## In Progress
+
+- Adding Key Vault authentication without Workload Identity (to accomodate home clusters, multi-cloud instances)
 
 ## Requirements & Limitations
 
@@ -32,14 +36,14 @@ export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
     oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
     --values ./charts/cert-manager-key-vault-sync/values.yaml \
-    --version v0.2.2 \
+    --version v0.3.0 \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
 
 If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
 
 ```sh
-helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync --version v0.2.2 \
+helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync --version v0.3.0 \
     --values ./charts/cert-manager-key-vault-sync/values.yaml > output.yaml
 ```
 
