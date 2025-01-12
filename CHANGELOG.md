@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped package `azure-identity` package to `1.*` from `1.17.1`
 - Bumped package `azure-keyvault-certificates` `4.*` from `4.8.0`
 - Bumped package `kubernetes` to `30.*` from `30.10.0`
+- Helm Chart updated to `v0.3.0` from `v0.2.2`
 
 ### Fixed
 
