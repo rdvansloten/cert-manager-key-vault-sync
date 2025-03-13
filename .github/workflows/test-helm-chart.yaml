@@ -275,4 +275,7 @@ jobs:
     - name: Delete AKS Cluster
       if: always()
       run: |
-        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --yes
+        az aks delete \
+          --resource-group $RESOURCE_GROUP \
+          --name $CLUSTER_NAME-${{ github.run_id }} \
+          --yes
