@@ -13,6 +13,9 @@ certificates:
   # Interval in seconds to check for new certificates
   checkInterval: 600
 
+prometheus:
+  enabled: true
+
 azure:
   # Name of the Key Vault, do not enter the full URI here
   keyVaultName: ""

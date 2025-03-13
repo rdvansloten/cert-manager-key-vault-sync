@@ -14,9 +14,18 @@ from azure.keyvault.certificates import CertificateClient
 from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
 from kubernetes import client, config
 
+# Prometheus metrics
+from prometheus_client import start_http_server, Counter, Histogram
+
 # Configure logging
 logging.basicConfig(level=getattr(logging, os.getenv("DEFAULT_LOGGING_LEVEL", "INFO")), format='%(asctime)s - %(levelname)s - %(message)s')
 logging.getLogger('azure').setLevel(getattr(logging, os.getenv("AZURE_LOGGING_LEVEL", "WARNING")))
+
+# Prometheus Metrics Definitions
+sync_total = Counter('sync_total', 'Total number of sync cycles attempted')
+sync_success_total = Counter('sync_success_total', 'Total number of successful sync cycles')
+sync_error_total = Counter('sync_error_total', 'Total number of sync cycles with errors')
+sync_duration_seconds = Histogram('sync_duration_seconds', 'Time spent in sync cycles (seconds)')
 
 # Set variables
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
@@ -27,9 +36,9 @@ filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 
 # Set version check information
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
-github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync") 
+github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v0.2.0"
+current_version = "v1.1.0"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Logging credentials initialization
@@ -77,7 +86,7 @@ def compare_thumbprint(kubernetes_cert, key_vault_thumbprint):
     kubernetes_thumbprint = re.search(r'Fingerprint=([\dA-F:]+)', kubernetes_raw_thumbprint.stdout).group(1).replace(':', '')
     
     # Remove certificate after use
-    logging.debug(f"Deleting temporary file 'cert.pem'.")
+    logging.debug("Deleting temporary file 'cert.pem'.")
     os.remove("cert.pem")
 
     logging.debug(f"Kubernetes Thumbprint: {kubernetes_thumbprint}")
@@ -131,7 +140,11 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
             pfx_cert_bytes = f.read()
         
         logging.info(f"Writing Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
-        imported_pfx_cert = certificate_client.import_certificate(certificate_name=cert_name, certificate_bytes=pfx_cert_bytes, tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace})
+        imported_pfx_cert = certificate_client.import_certificate(
+            certificate_name=cert_name,
+            certificate_bytes=pfx_cert_bytes,
+            tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace}
+        )
         logging.info(f"PFX certificate '{imported_pfx_cert.name}' imported successfully.")
 
     except Exception as e:
@@ -139,7 +152,7 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
         logging.error(error)
     
     finally:
-        logging.debug(f"Deleting temporary certificate files.")
+        logging.debug("Deleting temporary certificate files.")
         os.remove(pfx_file)
         os.remove("key.pem")
         os.remove("cert.pem")
@@ -153,7 +166,7 @@ def sync_k8s_secrets_to_key_vault():
     if not secrets_data.get('items'):
         logging.warning("No Kubernetes secrets found with the required annotations.")
 
-    for secret in secrets_data.get('items', []):  # Safely get items list
+    for secret in secrets_data.get('items', []):
         metadata = secret.get('metadata', {})
         annotations = metadata.get('annotations', {})
 
@@ -196,8 +209,6 @@ def sync_k8s_secrets_to_key_vault():
                 else:
                     logging.debug(f"Key Vault Certificate '{cert_name}' is up-to-date.")
 
-from packaging import version
-
 def check_for_new_version():
     """Checks GitHub for a new release version and logs a warning if a newer version is available."""
     if check_version in ("false", "0", "no", "disabled"):
@@ -226,7 +237,6 @@ def check_for_new_version():
     except Exception as e:
         logging.error(f"Error checking for updates: {e}")
 
-
 def schedule_version_check():
     """Runs the version check once at startup and every 24 hours in the background."""
     check_for_new_version()
@@ -245,9 +255,24 @@ def main():
     schedule_version_check()
     load_initial_state()
 
-    # Loop to synchronize Kubernetes secrets to Key Vault
+    # Start Prometheus metrics server on port 8000
+    start_http_server(8000)
+    logging.info("Prometheus metrics server started on port 8000")
+
+    # Loop to synchronize Kubernetes secrets to Key Vault with metrics instrumentation
     while True:
-        sync_k8s_secrets_to_key_vault()
+        sync_total.inc()
+        sync_start = time.time()
+        try:
+            sync_k8s_secrets_to_key_vault()
+            sync_success_total.inc()
+        except Exception as e:
+            sync_error_total.inc()
+            logging.error(f"Error during sync: {str(e)}")
+        finally:
+            duration = time.time() - sync_start
+            sync_duration_seconds.observe(duration)
+            logging.debug(f"Sync cycle duration: {duration} seconds.")
         logging.debug(f"Waiting for {check_interval} seconds.")
         time.sleep(check_interval)
 
