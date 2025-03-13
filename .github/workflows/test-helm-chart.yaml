@@ -15,14 +15,14 @@ permissions:
   contents: read
 
 env:
-    IMAGE_NAME: cert-manager-key-vault-sync
-    REPOSITORY_NAME: rdvansloten
-    HELM_REGISTRY_SERVER: registry-1.docker.io
-    RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
-    CLUSTER_NAME: "aks-cmkvs-test"
-    MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
-    NAMESPACE: "cert-manager-key-vault-sync"
-    SERVICE_ACCOUNT: "cert-manager-key-vault-sync"
+  IMAGE_NAME: cert-manager-key-vault-sync
+  REPOSITORY_NAME: rdvansloten
+  HELM_REGISTRY_SERVER: registry-1.docker.io
+  RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
+  CLUSTER_NAME: "aks-cmkvs-test"
+  MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
+  NAMESPACE: "cert-manager-key-vault-sync"
+  SERVICE_ACCOUNT: "cert-manager-key-vault-sync"
 
 jobs:
   build:
@@ -110,7 +110,7 @@ jobs:
           --resource-group $RESOURCE_GROUP \
           --issuer $OIDC_ISSUER \
           --subject system:serviceaccount:$NAMESPACE:$SERVICE_ACCOUNT
-    
+
     - name: Get AKS credentials
       run: |
         az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }}
@@ -139,7 +139,7 @@ jobs:
           cert-manager.io/certificate-name=fake-cert-manager-cert \
           --namespace default
 
-    - name: Deploy Helm chart
+    - name: Deploy Helm chart with Workload Identity
       run: |
         helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
           --values ./charts/cert-manager-key-vault-sync/values.yaml \
@@ -163,7 +163,71 @@ jobs:
           --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
         cat output.yaml
     
-    - name: Run Tests for global Certificates
+    - name: Run tests for Workload Identity certificates
+      run: |
+        sleep 90
+
+        echo "Getting fake certificate from Secret..."
+        kubectl describe secret fake-cert-manager-secret -n default
+
+        echo "Getting deployment status..."
+        kubectl get deployments --namespace $NAMESPACE
+        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
+
+        echo "Getting pod information..."
+        POD_NAME=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].metadata.name}")
+        RESTART_COUNT=$(kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath="{.status.containerStatuses[0].restartCount}")
+
+        echo "Pod Name: $POD_NAME"
+        echo "Restart Count: $RESTART_COUNT"
+
+        echo "Getting detailed pod description..."
+        kubectl describe pod $POD_NAME -n $NAMESPACE
+
+        echo "Fetching events related to the pod..."
+        kubectl get events -n $NAMESPACE --sort-by=.lastTimestamp | grep $POD_NAME
+
+        echo "Getting logs from cert-manager-key-vault-sync..."
+        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE --previous || echo "No previous logs found"
+
+        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
+          echo "Pod is crash looping. Restart count: $RESTART_COUNT"
+          exit 1
+        else
+          echo "Pod is running normally. Restart count: $RESTART_COUNT"
+        fi
+
+        echo "Uninstalling Helm chart..."
+        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
+
+    - name: Delete federated identity
+      if: always()
+      run: |
+        az identity federated-credential delete \
+          --name $SERVICE_ACCOUNT \
+          --identity-name $MANAGED_IDENTITY_NAME \
+          --resource-group $RESOURCE_GROUP \
+          --yes
+
+    - name: Deploy Helm Chart with Service Principal
+      run: |
+        kubectl create secret generic "cert-manager-key-vault-sync-secret" \
+          --from-literal=clientSecret="${{ secrets.SPN_CLIENT_SECRET }}" \
+          --namespace $NAMESPACE
+
+        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
+          --values ./charts/cert-manager-key-vault-sync/values.yaml \
+          --namespace $NAMESPACE \
+          --create-namespace \
+          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=gh-run-${{ github.run_id }} \
+          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
+          --set azure.workloadIdentity.clientId=${{ secrets.SPN_APP_ID }} \
+          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
+          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} \
+          --set azure.workloadIdentity.clientSecret="cert-manager-key-vault-sync-secret"
+
+    - name: Run tests for SPN certificates
       run: |
         sleep 90
 
@@ -211,13 +275,7 @@ jobs:
     - name: Delete AKS Cluster
       if: always()
       run: |
-        az aks delete --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --yes
-    
-    - name: Delete federated identity
-      if: always()
-      run: |
-        az identity federated-credential delete \
-          --name $SERVICE_ACCOUNT \
-          --identity-name $MANAGED_IDENTITY_NAME \
+        az aks delete \
           --resource-group $RESOURCE_GROUP \
+          --name $CLUSTER_NAME-${{ github.run_id }} \
           --yes
