@@ -1,6 +1,6 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v1.0.0
+  tag: v1.1.0
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -12,6 +12,9 @@ certificates:
   useNamespaces: "false"
   # Interval in seconds to check for new certificates
   checkInterval: 600
+
+prometheus:
+  enabled: true
 
 azure:
   # Name of the Key Vault, do not enter the full URI here

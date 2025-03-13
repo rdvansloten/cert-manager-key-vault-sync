@@ -1,0 +1,25 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: cert-manager-key-vault-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cert-manager-key-vault-sync
+    app.kubernetes.io/instance: cert-manager-key-vault-sync
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: cert-manager-key-vault-sync
+    app.kubernetes.io/instance: cert-manager-key-vault-sync
+{{- end }}

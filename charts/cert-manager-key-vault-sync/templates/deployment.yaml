@@ -27,6 +27,10 @@ spec:
         - name: cert-manager-key-vault-sync
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: metrics
+              containerPort: 8000
+              protocol: TCP
           env:
             - name: AZURE_KEY_VAULT_NAME
               value: {{ .Values.azure.keyVaultName }}

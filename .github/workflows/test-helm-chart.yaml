@@ -93,10 +93,13 @@ jobs:
           --enable-workload-identity \
           --enable-managed-identity \
           --enable-oidc-issuer \
+          --enable-azure-monitor-metrics \
           --generate-ssh-keys \
           --enable-addons azure-keyvault-secrets-provider \
           --node-vm-size Standard_DS2_v2 \
           --node-count 1
+        
+        sleep 300s
     
     - name: Set up Federated Identity for Workload Identity
       run: |
@@ -147,6 +150,7 @@ jobs:
           --create-namespace \
           --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
           --set image.tag=gh-run-${{ github.run_id }} \
+          --set prometheus.apiVersion="azmonitoring.coreos.com/v1" \
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
@@ -157,6 +161,7 @@ jobs:
           --namespace $NAMESPACE \
           --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
           --set image.tag=gh-run-${{ github.run_id }} \
+          --set prometheus.apiVersion="azmonitoring.coreos.com/v1" \
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
@@ -221,6 +226,7 @@ jobs:
           --create-namespace \
           --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
           --set image.tag=gh-run-${{ github.run_id }} \
+          --set prometheus.apiVersion="azmonitoring.coreos.com/v1" \
           --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
           --set azure.workloadIdentity.clientId=${{ secrets.SPN_APP_ID }} \
           --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
