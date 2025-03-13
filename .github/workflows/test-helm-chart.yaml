@@ -98,6 +98,8 @@ jobs:
           --enable-addons azure-keyvault-secrets-provider \
           --node-vm-size Standard_DS2_v2 \
           --node-count 1
+        
+        sleep 300s
     
     - name: Set up Federated Identity for Workload Identity
       run: |
