@@ -9,7 +9,7 @@ import requests
 import threading
 
 from packaging import version
-from azure.identity import DefaultAzureCredential, ClientSecretCredential
+from azure.identity import DefaultAzureCredential
 from azure.keyvault.certificates import CertificateClient
 from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
 from kubernetes import client, config
@@ -26,6 +26,13 @@ sync_total = Counter('sync_total', 'Total number of sync cycles attempted')
 sync_success_total = Counter('sync_success_total', 'Total number of successful sync cycles')
 sync_error_total = Counter('sync_error_total', 'Total number of sync cycles with errors')
 sync_duration_seconds = Histogram('sync_duration_seconds', 'Time spent in sync cycles (seconds)')
+
+# New metric: track certificate sync operations with certificate name and namespace as labels
+certificate_sync_total = Counter(
+    'certificate_sync_total',
+    'Total number of certificate sync operations attempted',
+    ['certificate', 'namespace']
+)
 
 # Set variables
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
@@ -193,15 +200,19 @@ def sync_k8s_secrets_to_key_vault():
             if not certificate_exists:
                 if use_namespaces:
                     logging.info(f"Key Vault Certificate '{namespace}-{cert_name}' does not exist. Creating it.")
+                    certificate_sync_total.labels(certificate=f"{namespace}-{cert_name}", namespace=namespace).inc()
                     create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
                 else:
                     logging.info(f"Key Vault Certificate '{cert_name}' does not exist. Creating it.")
+                    certificate_sync_total.labels(certificate=cert_name, namespace=namespace).inc()
                     create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
             elif use_namespaces and compare_thumbprint(cert_data, certificate_client.get_certificate(f"{namespace}-{cert_name}").properties.x509_thumbprint.hex().upper().replace('X', 'x')):
                 logging.info(f"Thumbprint mismatch for Key Vault Certificate '{namespace}-{cert_name}'. Updating it.")
+                certificate_sync_total.labels(certificate=f"{namespace}-{cert_name}", namespace=namespace).inc()
                 create_key_vault_certificate(f"{namespace}-{cert_name}", namespace, cert_data, key_data)
             elif not use_namespaces and compare_thumbprint(cert_data, certificate_client.get_certificate(cert_name).properties.x509_thumbprint.hex().upper().replace('X', 'x')):
                 logging.info(f"Thumbprint mismatch for Key Vault Certificate '{cert_name}'. Updating it.")
+                certificate_sync_total.labels(certificate=cert_name, namespace=namespace).inc()
                 create_key_vault_certificate(cert_name, namespace, cert_data, key_data)
             else:
                 if use_namespaces:

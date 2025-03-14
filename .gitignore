@@ -1,3 +1,6 @@
 .venv
 .certs/
 .secrets/
+.terraform/
+.terraform.lock.hcl
+*tfstate*
