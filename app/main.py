@@ -7,6 +7,7 @@ import subprocess
 import json
 import requests
 import threading
+import fnmatch
 
 from packaging import version
 from azure.identity import DefaultAzureCredential
@@ -40,6 +41,7 @@ key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
 use_namespaces = os.getenv("USE_NAMESPACES") in ("true", "1", "yes", "enabled")
 check_interval = int(os.getenv("CHECK_INTERVAL", 300))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
+certificate_name_filter = os.getenv("CERT_NAME_FILTER", "*")
 
 # Set version check information
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
@@ -180,6 +182,11 @@ def sync_k8s_secrets_to_key_vault():
         if annotations and filter_annotation in annotations:
             cert_name = annotations[filter_annotation]
             namespace = metadata.get('namespace')
+
+            # Apply certificate name filter using wildcard pattern
+            if not fnmatch.fnmatch(cert_name, certificate_name_filter):
+                logging.debug(f"Skipping certificate '{cert_name}' as it does not match filter '{certificate_name_filter}'")
+                continue
 
             # Extract certificate data
             secret_data = secret.get('data', {})
