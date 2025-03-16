@@ -34,16 +34,6 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 }
 
-resource "azurerm_role_assignment" "main" {
-  for_each = {
-    "AcrPull" = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
-    "AcrPush" = data.azurerm_client_config.current.object_id
-  }
-  principal_id         = each.value
-  role_definition_name = each.key
-  scope                = azurerm_container_registry.main.id
-}
-
 resource "azurerm_key_vault" "main" {
   name                          = "kvtest${random_string.main.result}cmkvs01"
   location                      = azurerm_resource_group.main.location
@@ -52,14 +42,6 @@ resource "azurerm_key_vault" "main" {
   sku_name                      = "standard"
   enable_rbac_authorization     = true
   public_network_access_enabled = true
-}
-
-resource "azurerm_container_registry" "main" {
-  name                = "acrtest${random_string.main.result}cmkvs01"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  sku                 = "Basic"
-  admin_enabled       = true
 }
 
 resource "azurerm_user_assigned_identity" "main" {
@@ -93,8 +75,8 @@ resource "tls_self_signed_cert" "main" {
   private_key_pem = tls_private_key.main.private_key_pem
 
   subject {
-    common_name  = "test.cmkvs.rdvansloten.nl"
-    organization = "Yunikon B.V."
+    common_name  = var.certificate_domain
+    organization = var.certificate_organization
   }
 
   validity_period_hours = 1
@@ -108,9 +90,9 @@ resource "tls_self_signed_cert" "main" {
 
 resource "kubernetes_secret_v1" "main" {
   metadata {
-    name = "test-cmkvs-rdvansloten-nl"
+    name = var.certificate_name
     annotations = {
-      "cert-manager.io/certificate-name" = "test-cmkvs-rdvansloten-nl"
+      "cert-manager.io/certificate-name" = var.certificate_name
     }
   }
 
@@ -126,11 +108,31 @@ resource "kubernetes_secret_v1" "main" {
 # Helm
 resource "helm_release" "prometheus" {
   name             = "prometheus"
-  repository       = "https://prometheus-community.github.io/helm-charts"
+  repository       = var.kube_prometheus_stack_repository
   chart            = "kube-prometheus-stack"
   namespace        = "monitoring"
   create_namespace = true
-  version          = "69.7.4"
+  version          = var.kube_prometheus_stack_version
+
+  set {
+    name  = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues"
+    value = "false"
+  }
+
+  set {
+    name  = "prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues"
+    value = "false"
+  }
+
+  set {
+    name  = "prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues"
+    value = "false"
+  }
+
+  set {
+    name  = "prometheus.prometheusSpec.probeSelectorNilUsesHelmValues"
+    value = "false"
+  }
 }
 
 resource "helm_release" "cert-manager-key-vault-sync" {
@@ -143,13 +145,12 @@ resource "helm_release" "cert-manager-key-vault-sync" {
   depends_on = [
     helm_release.prometheus,
     docker_registry_image.main,
-    azurerm_role_assignment.main,
     tls_self_signed_cert.main
   ]
 
   set {
     name  = "image.repository"
-    value = "${azurerm_container_registry.main.login_server}/cert-manager-key-vault-sync"
+    value = var.docker.repository
   }
 
   set {
@@ -180,14 +181,13 @@ resource "helm_release" "cert-manager-key-vault-sync" {
 
 # Docker
 resource "docker_image" "main" {
-  name = "${azurerm_container_registry.main.login_server}/cert-manager-key-vault-sync:test-${random_string.main.result}"
+  name = "${var.docker_registry}/${var.docker_repository}:test-${random_string.main.result}"
   build {
     context  = "../../"
-    platform = "linux/amd64"
+    platform = "linux/amd64,linux/arm64"
   }
 }
 
 resource "docker_registry_image" "main" {
   name          = docker_image.main.name
-  keep_remotely = true
 }

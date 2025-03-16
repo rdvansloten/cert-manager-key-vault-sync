@@ -43,10 +43,9 @@ provider "azurerm" {
 provider "docker" {
   host = "unix:///var/run/docker.sock"
   registry_auth {
-    address  = azurerm_container_registry.main.login_server
-    username = azurerm_container_registry.main.admin_username
-    password = azurerm_container_registry.main.admin_password
+    address  = "registry-1.docker.io"
   }
+  
 }
 
 provider "kubernetes" {

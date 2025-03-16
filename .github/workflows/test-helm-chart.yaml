@@ -18,11 +18,6 @@ env:
   IMAGE_NAME: cert-manager-key-vault-sync
   REPOSITORY_NAME: rdvansloten
   HELM_REGISTRY_SERVER: registry-1.docker.io
-  RESOURCE_GROUP: "rg-cert-manager-key-vault-sync"
-  CLUSTER_NAME: "aks-cmkvs-test"
-  MANAGED_IDENTITY_NAME: "uai-cert-manager-key-vault-sync"
-  NAMESPACE: "cert-manager-key-vault-sync"
-  SERVICE_ACCOUNT: "cert-manager-key-vault-sync"
 
 jobs:
   build:
@@ -33,16 +28,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '^1.21' # The Go version to download (if necessary) and use.
+
     - name: Install Azure CLI
       run: |
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
         sudo az aks install-cli
-    
-    - name: Install yq
-      run: |
-        sudo add-apt-repository ppa:rmescandon/yq
-        sudo apt update
-        sudo apt install yq -y
     
     - name: Install Helm
       uses: azure/setup-helm@v4.2.0
@@ -66,14 +59,6 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PAT }}
-    
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v6
-      with:
-        platforms: linux/amd64,linux/arm64
-        context: .
-        push: true
-        tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:gh-run-${{ github.run_id }}
 
     - name: Log into Helm Registry
       run: | 
@@ -85,203 +70,7 @@ jobs:
         CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
         helm package ${{ env.IMAGE_NAME }}
     
-    - name: Create AKS Cluster with Workload Identity
+    - name: End-to-end Helm Chart test
+      working-directory: ./test
       run: |
-        az aks create \
-          --resource-group $RESOURCE_GROUP \
-          --name $CLUSTER_NAME-${{ github.run_id }} \
-          --enable-workload-identity \
-          --enable-managed-identity \
-          --enable-oidc-issuer \
-          --enable-azure-monitor-metrics \
-          --generate-ssh-keys \
-          --enable-addons azure-keyvault-secrets-provider \
-          --node-vm-size Standard_DS2_v2 \
-          --node-count 1
-        
-        sleep 300s
-    
-    - name: Set up Federated Identity for Workload Identity
-      run: |
-        # Get the OIDC Issuer URL from the AKS cluster
-        OIDC_ISSUER=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }} --query "oidcIssuerProfile.issuerUrl" -o tsv)
-
-        # Create a federated identity credential in the managed identity
-        az identity federated-credential create \
-          --name $SERVICE_ACCOUNT \
-          --identity-name $MANAGED_IDENTITY_NAME \
-          --resource-group $RESOURCE_GROUP \
-          --issuer $OIDC_ISSUER \
-          --subject system:serviceaccount:$NAMESPACE:$SERVICE_ACCOUNT
-
-    - name: Get AKS credentials
-      run: |
-        az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME-${{ github.run_id }}
-        kubelogin convert-kubeconfig -l azurecli
-    
-    - name: Generate a Self-Signed Certificate
-      run: |
-        # Create the certificate and key files
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-          -keyout tls.key \
-          -out tls.crt \
-          -subj "/CN=fake-cert-manager-cert"
-
-        # Base64 encode the certificate and key
-        TLS_CRT=$(cat tls.crt | base64 -w 0)
-        TLS_KEY=$(cat tls.key | base64 -w 0)
-
-        # Create a Kubernetes secret with the fake certificate
-        kubectl create secret tls fake-cert-manager-secret \
-          --cert=tls.crt \
-          --key=tls.key \
-          --namespace default
-
-        # Annotate the secret as if it were created by cert-manager
-        kubectl annotate secret fake-cert-manager-secret \
-          cert-manager.io/certificate-name=fake-cert-manager-cert \
-          --namespace default
-
-    - name: Deploy Helm chart with Workload Identity
-      run: |
-        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
-          --values ./charts/cert-manager-key-vault-sync/values.yaml \
-          --namespace $NAMESPACE \
-          --create-namespace \
-          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-run-${{ github.run_id }} \
-          --set prometheus.apiVersion="azmonitoring.coreos.com/v1" \
-          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
-          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
-          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
-          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }}
-
-        echo "Helm template render:"
-        helm template cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
-          --namespace $NAMESPACE \
-          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-run-${{ github.run_id }} \
-          --set prometheus.apiVersion="azmonitoring.coreos.com/v1" \
-          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
-          --set azure.workloadIdentity.clientId=${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }} \
-          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
-          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} > output.yaml
-        cat output.yaml
-    
-    - name: Run tests for Workload Identity certificates
-      run: |
-        sleep 90
-
-        echo "Getting fake certificate from Secret..."
-        kubectl describe secret fake-cert-manager-secret -n default
-
-        echo "Getting deployment status..."
-        kubectl get deployments --namespace $NAMESPACE
-        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
-
-        echo "Getting pod information..."
-        POD_NAME=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].metadata.name}")
-        RESTART_COUNT=$(kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath="{.status.containerStatuses[0].restartCount}")
-
-        echo "Pod Name: $POD_NAME"
-        echo "Restart Count: $RESTART_COUNT"
-
-        echo "Getting detailed pod description..."
-        kubectl describe pod $POD_NAME -n $NAMESPACE
-
-        echo "Fetching events related to the pod..."
-        kubectl get events -n $NAMESPACE --sort-by=.lastTimestamp | grep $POD_NAME
-
-        echo "Getting logs from cert-manager-key-vault-sync..."
-        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE --previous || echo "No previous logs found"
-
-        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
-          echo "Pod is crash looping. Restart count: $RESTART_COUNT"
-          exit 1
-        else
-          echo "Pod is running normally. Restart count: $RESTART_COUNT"
-        fi
-
-        echo "Uninstalling Helm chart..."
-        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
-
-    - name: Delete federated identity
-      if: always()
-      run: |
-        az identity federated-credential delete \
-          --name $SERVICE_ACCOUNT \
-          --identity-name $MANAGED_IDENTITY_NAME \
-          --resource-group $RESOURCE_GROUP \
-          --yes
-
-    - name: Deploy Helm Chart with Service Principal
-      run: |
-        kubectl create secret generic "cert-manager-key-vault-sync-secret" \
-          --from-literal=clientSecret="${{ secrets.SPN_CLIENT_SECRET }}" \
-          --namespace $NAMESPACE
-
-        helm upgrade --install cert-manager-key-vault-sync ./charts/cert-manager-key-vault-sync \
-          --values ./charts/cert-manager-key-vault-sync/values.yaml \
-          --namespace $NAMESPACE \
-          --create-namespace \
-          --set image.repository=${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }} \
-          --set image.tag=gh-run-${{ github.run_id }} \
-          --set prometheus.apiVersion="azmonitoring.coreos.com/v1" \
-          --set azure.keyVaultName=${{ secrets.KEY_VAULT_NAME }} \
-          --set azure.workloadIdentity.clientId=${{ secrets.SPN_APP_ID }} \
-          --set azure.workloadIdentity.subscriptionId=${{ secrets.SUBSCRIPTION_ID }} \
-          --set azure.workloadIdentity.tenantId=${{ secrets.TENANT_ID }} \
-          --set azure.workloadIdentity.clientSecret="cert-manager-key-vault-sync-secret"
-
-    - name: Run tests for SPN certificates
-      run: |
-        sleep 90
-
-        echo "Getting fake certificate from Secret..."
-        kubectl describe secret fake-cert-manager-secret -n default
-
-        echo "Getting deployment status..."
-        kubectl get deployments --namespace $NAMESPACE
-        kubectl describe deployment cert-manager-key-vault-sync --namespace $NAMESPACE
-
-        echo "Getting pod information..."
-        POD_NAME=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=cert-manager-key-vault-sync -o jsonpath="{.items[0].metadata.name}")
-        RESTART_COUNT=$(kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath="{.status.containerStatuses[0].restartCount}")
-
-        echo "Pod Name: $POD_NAME"
-        echo "Restart Count: $RESTART_COUNT"
-
-        echo "Getting detailed pod description..."
-        kubectl describe pod $POD_NAME -n $NAMESPACE
-
-        echo "Fetching events related to the pod..."
-        kubectl get events -n $NAMESPACE --sort-by=.lastTimestamp | grep $POD_NAME
-
-        echo "Getting logs from cert-manager-key-vault-sync..."
-        kubectl logs deployment/cert-manager-key-vault-sync --namespace $NAMESPACE --previous || echo "No previous logs found"
-
-        if [[ -n "$RESTART_COUNT" && "$RESTART_COUNT" -gt 0 ]]; then
-          echo "Pod is crash looping. Restart count: $RESTART_COUNT"
-          exit 1
-        else
-          echo "Pod is running normally. Restart count: $RESTART_COUNT"
-        fi
-
-        echo "Uninstalling Helm chart..."
-        helm uninstall cert-manager-key-vault-sync --namespace $NAMESPACE
-
-    - name: Display Key Vault Certificates
-      if: always()
-      run: |
-        az keyvault certificate list \
-          --vault-name ${{ secrets.KEY_VAULT_NAME }} \
-          --query "[].{Name:name, Created:attributes.created, Thumbprint:x509ThumbprintHex}" \
-          --output table
-
-    - name: Delete AKS Cluster
-      if: always()
-      run: |
-        az aks delete \
-          --resource-group $RESOURCE_GROUP \
-          --name $CLUSTER_NAME-${{ github.run_id }} \
-          --yes
+        go test -v -timeout 60m

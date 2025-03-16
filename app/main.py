@@ -47,7 +47,7 @@ certificate_name_filter = os.getenv("CERT_NAME_FILTER", "*")
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
 github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v1.1.0"
+current_version = "v1.2.0"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Logging credentials initialization

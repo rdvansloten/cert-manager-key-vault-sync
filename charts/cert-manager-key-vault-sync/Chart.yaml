@@ -2,4 +2,4 @@ apiVersion: v2
 name: cert-manager-key-vault-sync
 description: A Helm chart for the cert-manager-key-vault-sync application.
 version: v1.1.0
-appVersion: v1.1.0
+appVersion: v1.2.0
