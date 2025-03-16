@@ -45,7 +45,6 @@ provider "docker" {
   registry_auth {
     address  = "registry-1.docker.io"
   }
-  
 }
 
 provider "kubernetes" {

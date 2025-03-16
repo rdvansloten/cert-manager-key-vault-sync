@@ -135,14 +135,23 @@ users:
 	maxRetries := 25
 	for i := 0; i < maxRetries; i++ {
 		resp, err = http.Get(url)
-		if err == nil && resp.StatusCode == 200 {
+		if err != nil {
+			t.Logf("Attempt %d: Error making HTTP request: %v", i+1, err)
+		} else if resp.StatusCode != http.StatusOK {
+			t.Logf("Attempt %d: Received non-OK status code: %d", i+1, resp.StatusCode)
+			resp.Body.Close()
+		} else {
 			body, readErr := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			if readErr == nil {
+			if readErr != nil {
+				t.Logf("Attempt %d: Error reading response body: %v", i+1, readErr)
+			} else {
 				lastResponseJSON = string(body)
 				t.Logf("Attempt %d: Prometheus response: %s", i+1, lastResponseJSON)
 				err = json.Unmarshal(body, &result)
-				if err == nil {
+				if err != nil {
+					t.Logf("Attempt %d: Error unmarshalling JSON: %v", i+1, err)
+				} else {
 					status, ok := result["status"].(string)
 					if ok && status == "success" {
 						data, ok := result["data"].(map[string]interface{})
@@ -155,11 +164,22 @@ users:
 									valueField, ok := firstResult["value"].([]interface{})
 									if ok && len(valueField) >= 2 && valueField[1] == "1" {
 										foundMetric = true
+										t.Logf("Attempt %d: Found metric with value 1", i+1)
 										break
+									} else {
+										t.Logf("Attempt %d: Metric value not equal to 1", i+1)
 									}
+								} else {
+									t.Logf("Attempt %d: Unexpected format for result element", i+1)
 								}
+							} else {
+								t.Logf("Attempt %d: No results found in Prometheus response", i+1)
 							}
+						} else {
+							t.Logf("Attempt %d: Data field missing or in unexpected format", i+1)
 						}
+					} else {
+						t.Logf("Attempt %d: Prometheus query unsuccessful, status: %v", i+1, result["status"])
 					}
 				}
 			}
@@ -167,5 +187,5 @@ users:
 		time.Sleep(10 * time.Second)
 	}
 	t.Logf("Final Prometheus response: %s", lastResponseJSON)
-	assert.True(t, foundMetric, "Expected certificate_sync_total to eventually return a value of 1")
+	assert.True(t, foundMetric, fmt.Sprintf("Expected certificate_sync_total to eventually return a value of 1. Last response: %s", lastResponseJSON))
 }

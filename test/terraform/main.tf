@@ -150,7 +150,7 @@ resource "helm_release" "cert-manager-key-vault-sync" {
 
   set {
     name  = "image.repository"
-    value = var.docker.repository
+    value = var.docker_repository
   }
 
   set {
@@ -184,7 +184,7 @@ resource "docker_image" "main" {
   name = "${var.docker_registry}/${var.docker_repository}:test-${random_string.main.result}"
   build {
     context  = "../../"
-    platform = "linux/amd64,linux/arm64"
+    platform = "linux/amd64"
   }
 }
 
