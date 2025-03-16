@@ -1,2 +1,2 @@
-docker_registry   = null
-docker_repository = null
+# docker_registry   = 
+# docker_repository = 
