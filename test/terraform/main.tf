@@ -8,6 +8,9 @@ resource "random_string" "main" {
 resource "azurerm_resource_group" "main" {
   name     = "test-${random_string.main.result}-cmkvs01"
   location = var.location
+
+  # Build Docker image before even trying to create Azure resources
+  depends_on = [docker_registry_image.main]
 }
 
 resource "azurerm_kubernetes_cluster" "main" {
@@ -114,6 +117,7 @@ resource "helm_release" "prometheus" {
   create_namespace = true
   version          = var.kube_prometheus_stack_version
 
+  # If these values are not set to 'false', the label 'release: prometheus' is required on the ServiceMonitor
   set {
     name  = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues"
     value = "false"
@@ -189,5 +193,5 @@ resource "docker_image" "main" {
 }
 
 resource "docker_registry_image" "main" {
-  name          = docker_image.main.name
+  name = docker_image.main.name
 }

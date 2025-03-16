@@ -43,7 +43,7 @@ provider "azurerm" {
 provider "docker" {
   host = "unix:///var/run/docker.sock"
   registry_auth {
-    address  = "registry-1.docker.io"
+    address = "registry-1.docker.io"
   }
 }
 
