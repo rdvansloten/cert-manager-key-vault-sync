@@ -32,6 +32,8 @@ spec:
               containerPort: 8000
               protocol: TCP
           env:
+            - name: CERT_NAME_FILTER
+              value: "{{ .Values.certificates.filter | default "*" }}"
             - name: AZURE_KEY_VAULT_NAME
               value: {{ .Values.azure.keyVaultName }}
             - name: CHECK_INTERVAL

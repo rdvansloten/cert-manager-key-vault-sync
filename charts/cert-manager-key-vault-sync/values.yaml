@@ -12,6 +12,8 @@ certificates:
   useNamespaces: "false"
   # Interval in seconds to check for new certificates
   checkInterval: 600
+  # Filter for the certificate names, supports wildcards
+  filter: "*"
 
 prometheus:
   enabled: true
