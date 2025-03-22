@@ -20,7 +20,7 @@ env:
   HELM_REGISTRY_SERVER: registry-1.docker.io
 
 jobs:
-  build:
+  test:
     name: Test Helm Chart on Azure Kubernetes Service
     runs-on: ubuntu-22.04
 
