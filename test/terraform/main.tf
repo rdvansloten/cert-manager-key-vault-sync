@@ -145,6 +145,7 @@ resource "helm_release" "cert-manager-key-vault-sync" {
   namespace        = "cert-manager-key-vault-sync"
   create_namespace = true
   force_update     = true
+  recreate_pods    = true
 
   depends_on = [
     helm_release.prometheus,
@@ -181,11 +182,23 @@ resource "helm_release" "cert-manager-key-vault-sync" {
     name  = "azure.workloadIdentity.tenantId"
     value = data.azurerm_client_config.current.tenant_id
   }
+
+  set {
+    name  = "Dockerfile"
+    value = local.docker_triggers.Dockerfile
+  }
+
+  set {
+    name  = "App"
+    value = local.docker_triggers.App
+  }
 }
 
 # Docker
 resource "docker_image" "main" {
-  name = "${var.docker_registry}/${var.docker_repository}:test-${random_string.main.result}"
+  name     = "${var.docker_registry}/${var.docker_repository}:test-${random_string.main.result}"
+  triggers = local.docker_triggers
+
   build {
     context  = "../../"
     platform = "linux/amd64"
@@ -193,5 +206,16 @@ resource "docker_image" "main" {
 }
 
 resource "docker_registry_image" "main" {
-  name = docker_image.main.name
+  name     = docker_image.main.name
+  triggers = local.docker_triggers
+}
+
+locals {
+  docker_triggers = {
+    Dockerfile = md5(file("../../Dockerfile"))
+    App = join("", [
+      md5(file("../../app/main.py")),
+      md5(file("../../app/requirements.txt"))
+    ])
+  }
 }

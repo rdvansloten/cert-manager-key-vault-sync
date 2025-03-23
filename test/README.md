@@ -16,17 +16,20 @@ This directory contains Terraform configurations and Terratest files to set up a
 ## Setup
 
 1. Login to Azure CLI:
+
 ```bash
 az login
 ```
 
 2. Initialize Terraform:
+
 ```bash
 cd terraform
 terraform init
 ```
 
 3. Install Go dependencies:
+
 ```bash
 go mod tidy
 ```
@@ -40,6 +43,7 @@ go test -v -timeout 30m
 ```
 
 This will:
+
 1. Create all required Azure resources
 2. Verify the infrastructure is correctly configured
 3. Clean up all resources after the test
@@ -49,10 +53,11 @@ This will:
 If you want to manually deploy the infrastructure:
 
 ```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply
+mise install
+cd ./test
+export DOCKER_REGISTRY_USER="Your username/email here"
+export DOCKER_REGISTRY_PASS="Your password/API token here"
+go test -v
 ```
 
 To get the AKS credentials:
@@ -81,4 +86,4 @@ You can modify the following variables in `terraform/variables.tf`:
 
 - The test environment uses Azure Managed Prometheus for monitoring
 - ACR admin credentials are enabled for easy testing
-- The AKS cluster has the necessary permissions to pull images from ACR 
+- The AKS cluster has the necessary permissions to pull images from ACR

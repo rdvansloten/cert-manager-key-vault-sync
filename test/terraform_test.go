@@ -50,8 +50,13 @@ func TestTerraformAzureAKS(t *testing.T) {
 		MaxRetries:         3,
 		TimeBetweenRetries: 30 * time.Second,
 	}
-	// Destroy resources after testing
-	defer terraform.Destroy(t, terraformOptions)
+
+	// Conditionally destroy resources unless SKIP_DESTROY env var is set to "true"
+	if os.Getenv("SKIP_DESTROY") != "true" {
+		defer terraform.Destroy(t, terraformOptions)
+	} else {
+		t.Log("SKIP_DESTROY is set; skipping terraform.Destroy() to preserve the environment.")
+	}
 
 	// Deploy resources
 	terraform.InitAndApply(t, terraformOptions)
@@ -70,7 +75,7 @@ func TestTerraformAzureAKS(t *testing.T) {
 	assert.Regexp(t, rgPattern, resourceGroupName, "Resource group name should match expected pattern")
 	assert.Regexp(t, clusterPattern, clusterName, "Cluster name should match expected pattern")
 
-	// Create a temporary directory for  kubeconfig and certificate files
+	// Create a temporary directory for kubeconfig and certificate files
 	tempDir, err := os.MkdirTemp("", "kubeconfig")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)

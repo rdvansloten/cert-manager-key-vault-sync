@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `terratest` tests
 - `release: prometheus` label to ServiceMonitor to work with vanilla `kube_prometheus_stack`
 - `mise` for package installations
+- Leader election for multi-pod deployments
 
 ### Changed
 

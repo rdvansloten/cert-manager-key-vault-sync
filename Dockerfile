@@ -51,4 +51,5 @@ USER haro
 
 RUN source /home/haro/.venv/bin/activate
 
-ENTRYPOINT ["python", "main.py"]
+ENTRYPOINT ["/home/haro/.venv/bin/python", "main.py"]
+

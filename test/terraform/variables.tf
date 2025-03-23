@@ -45,3 +45,10 @@ variable "kube_prometheus_stack_repository" {
   type        = string
   default     = "https://prometheus-community.github.io/helm-charts"
 }
+
+variable "certificate_amount" {
+  description = "Amount of certificates to create."
+  type        = number
+  default     = 1
+  
+}
