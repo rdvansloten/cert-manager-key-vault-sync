@@ -1,5 +1,7 @@
 FROM python:3.13-alpine3.21 AS builder
 
+ENV PATH="/home/haro/.venv:$PATH"
+
 # Create a non-root user and group
 RUN addgroup -S corgis && adduser -S haro -G corgis
 
@@ -17,7 +19,8 @@ USER haro
 
 # Install Python requirements as the non-root user
 COPY ./app/requirements.txt requirements.txt
-RUN uv pip install --system --requirements requirements.txt
+RUN  uv venv --python=python3.13 /home/haro/.venv && \
+    uv pip install --requirements requirements.txt
 
 # Revert to root to remove build dependencies
 USER root
@@ -26,6 +29,8 @@ RUN apk del cargo gcc libc-dev libffi-dev && \
 
 # Copy the installed packages to a final image
 FROM python:3.13-alpine3.21
+
+ENV PATH="/home/haro/.venv:$PATH"
 
 # Install openssl, required for certificate generation
 RUN apk upgrade --update-cache --available && \
