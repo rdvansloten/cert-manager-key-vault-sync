@@ -41,7 +41,7 @@ RUN chown haro:corgis /app
 
 # Copy the installed dependencies from the builder stage
 COPY --from=builder /home/haro/.local /home/haro/.local
-COPY --from=builder /home/haro/.venv /home/haro/.venv
+COPY --from=builder .venv /home/haro/.venv
 
 # Copy the main entrypoint
 COPY ./app/main.py main.py
