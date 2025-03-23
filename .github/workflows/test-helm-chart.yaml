@@ -1,18 +1,14 @@
 name: Test Helm Chart Deployment
 
 on:
-  workflow_run:
-    workflows: [Test Docker Image]
-    types:
-      - completed
   workflow_dispatch:
-  # pull_request:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'charts/**'
-  #     - 'app/**'
-  #     - 'Dockerfile'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'charts/**'
+      - 'app/**'
+      - 'Dockerfile'
 
 permissions:
   id-token: write
