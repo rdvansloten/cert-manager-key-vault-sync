@@ -69,13 +69,26 @@ resource "azurerm_role_assignment" "cmkvs" {
 }
 
 # Certificate
+resource "random_string" "certificate" {
+  count = var.certificate_amount
+
+  length  = 24
+  special = false
+  upper   = false
+  numeric = false
+}
+
 resource "tls_private_key" "main" {
+  count = var.certificate_amount
+
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "tls_self_signed_cert" "main" {
-  private_key_pem = tls_private_key.main.private_key_pem
+  count = var.certificate_amount
+
+  private_key_pem = tls_private_key.main[count.index].private_key_pem
 
   subject {
     common_name  = var.certificate_domain
@@ -92,16 +105,18 @@ resource "tls_self_signed_cert" "main" {
 }
 
 resource "kubernetes_secret_v1" "main" {
+  count = var.certificate_amount
+
   metadata {
-    name = var.certificate_name
+    name = "${random_string.certificate[count.index].value}-${var.certificate_name}"
     annotations = {
-      "cert-manager.io/certificate-name" = var.certificate_name
+      "cert-manager.io/certificate-name" = "${random_string.certificate[count.index].value}.${var.certificate_domain}"
     }
   }
 
   data = {
-    "tls.crt" = tls_self_signed_cert.main.cert_pem
-    "tls.key" = tls_private_key.main.private_key_pem
+    "tls.crt" = tls_self_signed_cert.main[count.index].cert_pem
+    "tls.key" = tls_private_key.main[count.index].private_key_pem
     "ca.crt"  = ""
   }
 

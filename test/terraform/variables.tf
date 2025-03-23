@@ -23,9 +23,9 @@ variable "certificate_name" {
 }
 
 variable "certificate_domain" {
-  description = "Domain name for the certificate."
+  description = "Parent domain name for the certificate."
   type        = string
-  default     = "cmkvs.rdvansloten.nl"
+  default     = "rdvansloten.nl"
 }
 
 variable "certificate_organization" {

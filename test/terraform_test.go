@@ -164,12 +164,14 @@ users:
 								firstResult, ok := resultArray[0].(map[string]interface{})
 								if ok {
 									valueField, ok := firstResult["value"].([]interface{})
-									if ok && len(valueField) >= 2 && valueField[1] == "1" {
-										foundMetric = true
-										t.Logf("Attempt %d: Found metric with value 1", i+1)
-										break
-									} else {
-										t.Logf("Attempt %d: Metric value not equal to 1", i+1)
+									if ok && len(valueField) >= 2 {
+										if strValue, ok := valueField[1].(string); ok && strValue > "0" {
+											foundMetric = true
+											t.Logf("Attempt %d: Found metric with value > 0", i+1)
+											break
+										} else {
+											t.Logf("Attempt %d: Metric value not greater than 0 or not a string", i+1)
+										}
 									}
 								} else {
 									t.Logf("Attempt %d: Unexpected format for result element", i+1)

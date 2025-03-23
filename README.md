@@ -29,7 +29,7 @@ For complete documentation, see the [`wiki`](./wiki).
 
 ## Helm Installation
 
-If you're running an older version of Helm, `HELM_EXPERIMENTAL_OCI=1` needs to be set to support OCI charts.
+[Helm v3 or higher](https://helm.sh/docs/intro/install/#through-package-managers) is recommended for use with this Helm Chart.
 
 ```sh
 export HELM_EXPERIMENTAL_OCI=1

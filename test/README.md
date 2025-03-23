@@ -3,15 +3,17 @@
 This directory contains Terraform configurations and Terratest files to set up a test environment for the cert-manager-key-vault-sync project. The environment includes:
 
 - Azure Kubernetes Service (AKS) cluster with Managed Prometheus
+- Azure Key Vault
 - Azure Container Registry (ACR)
 - Necessary IAM roles and permissions
 
 ## Prerequisites
 
-- Azure CLI installed and configured
-- Terraform (>= 1.0.0)
-- Go (>= 1.21)
-- Docker
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli#install) (`>= 2.x`)
+- [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) (`>= 1.x`)
+- [Go](https://go.dev/doc/install) (`>= 1.21`)
+- [Mise](https://mise.jdx.dev/getting-started.html#getting-started) (`>= 2025.x`)
+- [Docker](https://docs.docker.com/desktop/) (`>= 27.x`)
 
 ## Setup
 
@@ -21,11 +23,10 @@ This directory contains Terraform configurations and Terratest files to set up a
 az login
 ```
 
-2. Initialize Terraform:
+2. Initialize packages:
 
 ```bash
-cd terraform
-terraform init
+mise install
 ```
 
 3. Install Go dependencies:
@@ -50,7 +51,7 @@ This will:
 
 ## Manual Testing
 
-If you want to manually deploy the infrastructure:
+If you want to manually deploy the infrastructure from local:
 
 ```bash
 mise install
