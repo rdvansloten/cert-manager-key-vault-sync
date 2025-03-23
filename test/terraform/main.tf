@@ -91,7 +91,7 @@ resource "tls_self_signed_cert" "main" {
   private_key_pem = tls_private_key.main[count.index].private_key_pem
 
   subject {
-    common_name  = var.certificate_domain
+    common_name  = "${random_string.certificate[count.index].result}.${var.certificate_domain}"
     organization = var.certificate_organization
   }
 
@@ -110,7 +110,7 @@ resource "kubernetes_secret_v1" "main" {
   metadata {
     name = "${random_string.certificate[count.index].result}-${var.certificate_name}"
     annotations = {
-      "cert-manager.io/certificate-name" = "${random_string.certificate[count.index].result}.${var.certificate_domain}"
+      "cert-manager.io/certificate-name" = "${random_string.certificate[count.index].result}-${var.certificate_name}"
     }
   }
 

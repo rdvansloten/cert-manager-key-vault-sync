@@ -57,7 +57,7 @@ leader_active = True
 logging.info("Starting cert-manager-key-vault-sync operator.")
 logging.info(f"Current version: {current_version}")
 logging.info(f"Using Key Vault: {key_vault_uri}")
-logging.info(f"Using Namespace separation: {use_namespaces}")
+logging.info(f"Using Namespace separation: {str(use_namespaces).lower()}")
 logging.info(f"Using certificate name filter: {certificate_name_filter}")
 logging.info(f"Using annotation filter: {filter_annotation}")
 logging.info(f"Using version check interval: {version_check_interval}")
