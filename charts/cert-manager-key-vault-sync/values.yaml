@@ -3,12 +3,12 @@ image:
   tag: v1.2.0
   pullPolicy: IfNotPresent
 
-replicaCount: 1
+replicaCount: 3
 
 certificates:
   annotation: "cert-manager.io/certificate-name"
   # Is set to true, the namespace name is appended to the certificate name in the Key Vault
-  # Be aware that having duplicate certificate names in different namespaces will cause constant sync issues
+  # Be aware that having duplicate certificate names in different namespaces will cause constant certificate overwrites in Key Vault
   useNamespaces: "false"
   # Interval in seconds to check for new certificates
   checkInterval: 600
