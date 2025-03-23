@@ -17,7 +17,7 @@ USER haro
 
 # Install Python requirements as the non-root user
 COPY ./app/requirements.txt requirements.txt
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN uv pip install --system --requirements requirements.txt
 
 # Revert to root to remove build dependencies
 USER root

@@ -9,13 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- terratest tests
-- `release: prometheus` to ServiceMonitor to work with vanilla `kube_prometheus_stack`
+- `kopf` to enable high availability
+- `ruff` for linting
+- `terratest` tests
+- `release: prometheus` label to ServiceMonitor to work with vanilla `kube_prometheus_stack`
+- `mise` for package installations
 
 ### Changed
 
 - Tests now use terratest + Terraform instead of GitHub Workflows + Azure CLI
 - Updated documentation in wiki
+- Comments and formatting due to linting
+- Switched to `uv` from `pip`
 
 ## [v1.1.0] - 2025-03-13
 
