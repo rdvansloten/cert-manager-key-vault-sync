@@ -108,9 +108,9 @@ resource "kubernetes_secret_v1" "main" {
   count = var.certificate_amount
 
   metadata {
-    name = "${random_string.certificate[count.index].value}-${var.certificate_name}"
+    name = "${random_string.certificate[count.index].result}-${var.certificate_name}"
     annotations = {
-      "cert-manager.io/certificate-name" = "${random_string.certificate[count.index].value}.${var.certificate_domain}"
+      "cert-manager.io/certificate-name" = "${random_string.certificate[count.index].result}.${var.certificate_domain}"
     }
   }
 
