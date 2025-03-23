@@ -2,8 +2,7 @@ name: Test Helm Chart Deployment
 
 on:
   workflow_run:
-    workflows: 
-      - Test Docker Image
+    workflows: [Test Docker Image]
     types:
       - completed
   workflow_dispatch:
