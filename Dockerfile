@@ -17,7 +17,8 @@ USER haro
 
 # Install Python requirements as the non-root user
 COPY ./app/requirements.txt requirements.txt
-RUN uv venv --python=python3.13 && \
+RUN uv venv --python=python3.13 /home/haro/.venv && \
+    source /home/haro/.venv/bin/activate && \
     uv pip install --requirements requirements.txt
 
 # Revert to root to remove build dependencies
@@ -40,7 +41,7 @@ WORKDIR /app
 RUN chown haro:corgis /app
 
 # Copy the installed dependencies from the builder stage
-COPY --from=builder .venv /home/haro/.venv
+COPY --from=builder /home/haro/.venv /home/haro/.venv
 
 # Copy the main entrypoint
 COPY ./app/main.py main.py
@@ -48,6 +49,6 @@ COPY ./app/main.py main.py
 # Switch to non-root user for execution
 USER haro
 
-RUN uv venv
+RUN source /home/haro/.venv/bin/activate
 
 ENTRYPOINT ["python", "main.py"]
