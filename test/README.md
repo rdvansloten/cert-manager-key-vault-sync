@@ -61,6 +61,8 @@ export DOCKER_REGISTRY_PASS="Your password/API token here"
 go test -v
 ```
 
+You can set `export SKIP_DESTROY=true` to prevent resources from being destroyed, in case you wish to debug inside Kubernetes.
+
 To get the AKS credentials:
 
 ```bash

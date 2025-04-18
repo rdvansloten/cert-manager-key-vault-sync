@@ -95,7 +95,7 @@ resource "tls_self_signed_cert" "main" {
     organization = var.certificate_organization
   }
 
-  validity_period_hours = 1
+  validity_period_hours = 24
 
   allowed_uses = [
     "key_encipherment",
