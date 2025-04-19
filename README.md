@@ -1,5 +1,8 @@
 # cert-manager-key-vault-sync
 
+[!WARNING]  
+Due to an oversight when aligning versions, Helm Charts and Docker images were overwriting one another on the latest builds. This is now resolved by moving the Helm Charts to *docker.io/rdvansloten/cert-manager-key-vault-sync-chart*. Please update your install accordingly.
+
 Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azure Key Vault.
 
 | Component   | Version | Status                                                                                                                           |
