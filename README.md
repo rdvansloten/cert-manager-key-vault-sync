@@ -1,10 +1,13 @@
 # cert-manager-key-vault-sync
 
+> [!WARNING]  
+> Due to an oversight when aligning versions, Helm Charts and Docker images were overwriting one another on the latest builds. This is now resolved by moving the Helm Charts to `docker.io/rdvansloten/cert-manager-key-vault-sync-chart`. Please update your install accordingly.
+
 Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azure Key Vault.
 
 | Component   | Version | Status                                                                                                                           |
 | ----------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Helm Chart  | v1.2.0  | ![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg) |
+| Helm Chart  | v1.2.1  | ![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg) |
 | Application | v1.2.0  | ![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)    |
 
 ## Features
@@ -34,16 +37,16 @@ For complete documentation, see the [`wiki`](./wiki).
 ```sh
 export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
-    oci://docker.io/rdvansloten/cert-manager-key-vault-sync \
+    oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart \
     --values ./charts/cert-manager-key-vault-sync/values.yaml \
-    --version v1.2.0 \
+    --version v1.2.1 \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
 
 If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
 
 ```sh
-helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync --version v1.2.0 \
+helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart --version v1.2.0 \
     --values ./charts/cert-manager-key-vault-sync/values.yaml > output.yaml
 ```
 

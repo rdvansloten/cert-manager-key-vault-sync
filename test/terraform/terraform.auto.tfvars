@@ -1,3 +1,3 @@
 # docker_registry   = 
 # docker_repository = 
-certificate_amount = 300
+certificate_amount = 50

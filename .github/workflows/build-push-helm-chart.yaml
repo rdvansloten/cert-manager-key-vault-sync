@@ -11,7 +11,7 @@ on:
       - 'Dockerfile'
 
 env:
-  IMAGE_NAME: cert-manager-key-vault-sync
+  IMAGE_NAME: cert-manager-key-vault-sync-chart
   REPOSITORY_NAME: rdvansloten
   HELM_REGISTRY_SERVER: registry-1.docker.io
 
