@@ -156,7 +156,7 @@ resource "helm_release" "prometheus" {
 
 resource "helm_release" "cert-manager-key-vault-sync" {
   name             = "cert-manager-key-vault-sync"
-  chart            = "../../charts/cert-manager-key-vault-sync"
+  chart            = "../../charts/cert-manager-key-vault-sync-chart"
   namespace        = "cert-manager-key-vault-sync"
   create_namespace = true
   force_update     = true
