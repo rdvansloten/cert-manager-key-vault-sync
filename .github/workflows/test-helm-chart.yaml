@@ -15,7 +15,8 @@ permissions:
   contents: read
 
 env:
-  IMAGE_NAME: cert-manager-key-vault-sync-chart
+  IMAGE_NAME: cert-manager-key-vault-sync
+  CHART_NAME: cert-manager-key-vault-sync-chart
   REPOSITORY_NAME: rdvansloten
   HELM_REGISTRY_SERVER: registry-1.docker.io
 
