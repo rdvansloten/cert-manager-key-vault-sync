@@ -1,0 +1,6 @@
+[tools]
+go = "1.21"
+helm = "v3.17.2"
+python = ["3.13"]
+terraform = "1"
+uv = "0"

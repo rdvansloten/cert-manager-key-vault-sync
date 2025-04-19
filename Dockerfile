@@ -9,7 +9,7 @@ RUN chown haro:corgis /app
 
 # Install openssl and build dependencies as root
 RUN apk upgrade --update-cache --available && \
-    apk add --no-cache openssl cargo gcc libc-dev openssl-dev libffi-dev && \
+    apk add --no-cache openssl uv cargo gcc libc-dev openssl-dev libffi-dev && \
     rm -rf /var/cache/apk/*
 
 # Switch to non-root user for the remaining steps
@@ -17,7 +17,9 @@ USER haro
 
 # Install Python requirements as the non-root user
 COPY ./app/requirements.txt requirements.txt
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN uv venv --python=python3.13 /home/haro/.venv && \
+    source /home/haro/.venv/bin/activate && \
+    uv pip install --requirements requirements.txt
 
 # Revert to root to remove build dependencies
 USER root
@@ -39,7 +41,7 @@ WORKDIR /app
 RUN chown haro:corgis /app
 
 # Copy the installed dependencies from the builder stage
-COPY --from=builder /home/haro/.local /home/haro/.local
+COPY --from=builder /home/haro/.venv /home/haro/.venv
 
 # Copy the main entrypoint
 COPY ./app/main.py main.py
@@ -47,4 +49,7 @@ COPY ./app/main.py main.py
 # Switch to non-root user for execution
 USER haro
 
-ENTRYPOINT ["python", "main.py"]
+RUN source /home/haro/.venv/bin/activate
+
+ENTRYPOINT ["/home/haro/.venv/bin/python", "main.py"]
+

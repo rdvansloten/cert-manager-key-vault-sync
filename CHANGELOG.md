@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0] - 2025-03-16
+
+### Added
+
+- `kopf` to enable high availability
+- `ruff` for linting
+- `terratest` tests
+- `release: prometheus` label to ServiceMonitor to work with vanilla `kube_prometheus_stack`
+- `mise` for package installations
+- Leader election for multi-pod deployments
+
+### Changed
+
+- Tests now use terratest + Terraform instead of GitHub Workflows + Azure CLI
+- Updated documentation in wiki
+- Comments and formatting due to linting
+- Switched to `uv` from `pip`
+- Set default replicas to `3` from `1`
+
 ## [v1.1.0] - 2025-03-13
 
 ### Added
