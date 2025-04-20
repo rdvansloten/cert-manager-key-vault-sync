@@ -11,7 +11,8 @@ on:
       - 'Dockerfile'
 
 env:
-  IMAGE_NAME: cert-manager-key-vault-sync-chart
+  IMAGE_NAME: cert-manager-key-vault-sync
+  CHART_NAME: cert-manager-key-vault-sync-chart
   REPOSITORY_NAME: rdvansloten
   HELM_REGISTRY_SERVER: registry-1.docker.io
 
@@ -31,6 +32,6 @@ jobs:
     - name: Build and push Helm chart
       working-directory: ./charts
       run: |
-        CHART_VERSION=$(cat ./${{ env.IMAGE_NAME }}/Chart.yaml | grep version | awk '{print $2}')
-        helm package ${{ env.IMAGE_NAME }}
-        helm push $IMAGE_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}
+        CHART_VERSION=$(cat ./${{ env.CHART_NAME }}/Chart.yaml | grep version | awk '{print $2}')
+        helm package ${{ env.CHART_NAME }}
+        helm push $CHART_NAME-$CHART_VERSION.tgz oci://${{ env.HELM_REGISTRY_SERVER }}/${{ secrets.DOCKER_USERNAME }}
