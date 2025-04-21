@@ -38,7 +38,7 @@ For complete documentation, see the [`wiki`](https://github.com/rdvansloten/cert
 export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
     oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart \
-    --values ./charts/cert-manager-key-vault-sync/values.yaml \
+    --values ./charts/cert-manager-key-vault-sync-chart/values.yaml \
     --version v1.2.1 \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
@@ -47,7 +47,7 @@ If you wish to use raw Kubernetes manifests instead, you may render the Helm tem
 
 ```sh
 helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart --version v1.2.1 \
-    --values ./charts/cert-manager-key-vault-sync/values.yaml > output.yaml
+    --values ./charts/cert-manager-key-vault-sync-chart/values.yaml > output.yaml
 ```
 
 ## Contributing
