@@ -12,6 +12,7 @@ on:
 
 env:
   IMAGE_NAME: cert-manager-key-vault-sync
+  CHART_NAME: cert-manager-key-vault-sync-chart
   REPOSITORY_NAME: rdvansloten
 
 jobs:
@@ -32,7 +33,7 @@ jobs:
     - name: Read version from YAML
       id: read_version
       run: |
-        version=$(cat ./charts/${{ env.IMAGE_NAME }}/Chart.yaml | grep appVersion | awk '{print $2}')
+        version=$(cat ./charts/${{ env.CHART_NAME }}/Chart.yaml | grep appVersion | awk '{print $2}')
         echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Set up Docker Buildx
