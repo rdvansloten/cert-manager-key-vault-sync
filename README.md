@@ -22,7 +22,7 @@ Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azu
 
 ## Documentation
 
-For complete documentation, see the [`wiki`](./wiki).
+For complete documentation, see the [`wiki`](https://github.com/rdvansloten/cert-manager-key-vault-sync/wiki).
 
 ## Requirements & Limitations
 
@@ -46,7 +46,7 @@ helm upgrade --install cert-manager-key-vault-sync \
 If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
 
 ```sh
-helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart --version v1.2.0 \
+helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart --version v1.2.1 \
     --values ./charts/cert-manager-key-vault-sync/values.yaml > output.yaml
 ```
 
