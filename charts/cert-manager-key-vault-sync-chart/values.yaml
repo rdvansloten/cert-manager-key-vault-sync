@@ -1,5 +1,5 @@
 image:
-  repository: docker.io/rdvansloten/cert-manager-key-vault-sync-chart
+  repository: docker.io/rdvansloten/cert-manager-key-vault-sync
   tag: v1.2.0
   pullPolicy: Always
 
