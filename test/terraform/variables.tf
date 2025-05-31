@@ -7,7 +7,7 @@ variable "location" {
 variable "docker_registry" {
   description = "Docker registry to use."
   type        = string
-  default     = "registry-1.docker.io"
+  default     = "index.docker.io"
 }
 
 variable "docker_repository" {
@@ -50,5 +50,10 @@ variable "certificate_amount" {
   description = "Amount of certificates to create."
   type        = number
   default     = 1
-  
+}
+
+variable "config_file_content" {
+  description = "Docker auth config file content."
+  type        = string
+  default     = "{\"auths\":{\"https://index.docker.io/v1/\":{},\"https://registry-1.docker.io/v1/\":{}},\"credsStore\":\"osxkeychain\"}"
 }

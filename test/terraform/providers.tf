@@ -10,7 +10,7 @@ terraform {
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 3"
+      version = "3.1.2"
     }
     random = {
       source  = "hashicorp/random"
@@ -42,8 +42,10 @@ provider "azurerm" {
 
 provider "docker" {
   host = "unix:///var/run/docker.sock"
+
   registry_auth {
-    address = "registry-1.docker.io"
+    address             = "index.docker.io"
+    config_file_content = var.config_file_content
   }
 }
 

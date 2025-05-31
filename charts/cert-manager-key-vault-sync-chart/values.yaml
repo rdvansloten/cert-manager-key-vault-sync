@@ -1,6 +1,6 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v1.2.0
+  tag: v1.3.0
   pullPolicy: Always
 
 replicaCount: 3
@@ -43,7 +43,7 @@ loggingLevels:
   azure: "WARNING"
 
 # These resources should be plenty, only raise if you have a huge amount of certificates and get OOMKilled errors
-# From preliminary testing, 128Mi should support up to 1500 unique certificates
+# From preliminary testing, 512Mi should support up to 1500 unique certificates
 resources:
   requests:
     cpu: 50m

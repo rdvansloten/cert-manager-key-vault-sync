@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cert-manager-key-vault-sync
+  name: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
 rules:
   - apiGroups: [""]
     resources: ["secrets"]

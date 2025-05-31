@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cert-manager-key-vault-sync
+  name: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: cert-manager-key-vault-sync

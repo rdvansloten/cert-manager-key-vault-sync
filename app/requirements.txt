@@ -1,6 +1,6 @@
-azure-identity==1.*
-azure-keyvault-certificates==4.*
-kubernetes==30.*
-requests==2.*
-packaging==24.*
-prometheus-client==0.*
+azure-identity==1.23.*
+azure-keyvault-certificates==4.9.*
+kubernetes==32.0.*
+requests==2.32.*
+packaging==25.*
+prometheus-client==0.22.*
