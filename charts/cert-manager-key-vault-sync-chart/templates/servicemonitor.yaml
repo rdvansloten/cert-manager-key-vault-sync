@@ -2,7 +2,7 @@
 apiVersion: {{ $.Values.prometheus.apiVersion | default "monitoring.coreos.com/v1" }}
 kind: ServiceMonitor
 metadata:
-  name: cert-manager-key-vault-sync
+  name: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: cert-manager-key-vault-sync

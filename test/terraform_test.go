@@ -6,8 +6,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"testing"
 	"time"
 
@@ -28,6 +30,20 @@ func fetchSensitiveOutput(t *testing.T, options *terraform.Options, name string)
 
 func TestTerraformAzureAKS(t *testing.T) {
 	t.Parallel()
+
+	// Try to start Docker Desktop on macOS or Windows (ignore any errors)
+	if osName := runtime.GOOS; osName == "darwin" || osName == "windows" {
+		// Map GOOS to a human-friendly name
+		friendly := map[string]string{
+			"darwin":  "macOS",
+			"windows": "Windows",
+		}[osName]
+
+		t.Logf("Detected %s: attempting to start Docker Desktop", friendly)
+		if out, err := exec.Command("docker", "desktop", "start").CombinedOutput(); err != nil {
+			t.Logf("Ignoring error starting Docker Desktop: %v — output: %s", err, string(out))
+		}
+	}
 
 	// Read any required Docker auth environment variables
 	dockerUsername := os.Getenv("DOCKER_REGISTRY_USER")

@@ -11,7 +11,7 @@ This directory contains Terraform configurations and Terratest files to set up a
 
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli#install) (`>= 2.x`)
 - [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) (`>= 1.x`)
-- [Go](https://go.dev/doc/install) (`>= 1.21`)
+- [Go](https://go.dev/doc/install) (`>= 1.24`)
 - [Mise](https://mise.jdx.dev/getting-started.html#getting-started) (`>= 2025.x`)
 - [Docker](https://docs.docker.com/desktop/) (`>= 27.x`)
 

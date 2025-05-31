@@ -35,7 +35,7 @@ certificate_sync_total = Counter("certificate_sync_total", "Total number of cert
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
 key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
 use_namespaces = os.getenv("USE_NAMESPACES", "false").lower() in ("true", "1", "yes", "enabled")
-check_interval = int(os.getenv("CHECK_INTERVAL", 300))
+check_interval = int(os.getenv("CHECK_INTERVAL", "300"))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 certificate_name_filter = os.getenv("CERT_NAME_FILTER", "*")
 
@@ -43,14 +43,14 @@ certificate_name_filter = os.getenv("CERT_NAME_FILTER", "*")
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
 github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v1.2.0"
+current_version = "v1.3.0"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Leader election variables
 lease_name = os.getenv("LEADER_ELECTION_LEASE_NAME", "cert-manager-key-vault-sync-leader")
 lease_namespace = os.getenv("POD_NAMESPACE", "cert-manager-key-vault-sync")
-lease_duration_seconds = int(os.getenv("LEASE_DURATION_SECONDS", 60))
-renew_interval_seconds = int(os.getenv("RENEW_INTERVAL_SECONDS", 60))
+lease_duration_seconds = int(os.getenv("LEASE_DURATION_SECONDS", "60"))
+renew_interval_seconds = int(os.getenv("RENEW_INTERVAL_SECONDS", "60"))
 pod_name = os.getenv("POD_NAME", "unknown")
 leader_active = True
 
@@ -59,37 +59,46 @@ logging.info(f"Current version: {current_version}")
 logging.info(f"Using Key Vault: {key_vault_uri}")
 logging.info(f"Using Namespace separation: {str(use_namespaces).lower()}")
 logging.info(f"Using certificate name filter: {certificate_name_filter}")
-logging.info(f"Using annotation filter: {filter_annotation}")
+logging.info("Using annotation filter: %s", filter_annotation)
 logging.info(f"Using version check interval: {version_check_interval}")
 logging.info(f"Using GitHub version check: {check_version}")
-
-# Initialize Key Vault client
-try:
-    credential = DefaultAzureCredential(exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
-    certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
-
-    logging.info("Detected Key Vault Certificates:")
-    for cert in certificate_client.list_properties_of_certificates():
-        logging.info(f"- {cert.name}")
-
-    logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
-
-except ResourceNotFoundError as e:
-    logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
-    raise
-
-except ServiceRequestError as e:
-    logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
-    raise
-
-except Exception as e:
-    logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
-    raise
 
 # Initialize Kubernetes client (in-cluster config)
 config.load_incluster_config()
 k8s_client = client.CoreV1Api()
 
+# Azure credential and Key Vault client will be initialized after leadership is acquired
+credential = None
+certificate_client = None
+
+def init_key_vault_client():
+    '''Initialize the Azure Key Vault client using DefaultAzureCredential.''' 
+    global credential, certificate_client
+    # Lazy initialization if not already done
+    if certificate_client is not None:
+        return
+
+    credential = DefaultAzureCredential(exclude_interactive_browser_credential=False, additionally_allowed_tenants="*")
+    certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
+
+    try:
+        logging.info("Detected Key Vault Certificates:")
+        for cert in certificate_client.list_properties_of_certificates():
+            logging.info(cert.name)
+
+        logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
+
+    except ResourceNotFoundError as e:
+        logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
+        raise
+
+    except ServiceRequestError as e:
+        logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
+        raise
+
+    except Exception as e:
+        logging.error(f"Failed to connect to Key Vault '{key_vault_name}': {str(e)}")
+        raise
 
 # Leader election functions
 def get_lease(api):
@@ -114,24 +123,23 @@ def create_lease(api):
     )
     try:
         created = api.create_namespaced_lease(lease_namespace, lease)
-        logging.info(f"[{pod_name}] Created lease; acquired leadership.")
+        logging.info(f"Pod {pod_name} created lease; acquired leadership.")
         return created
     except client.exceptions.ApiException as e:
-        logging.error(f"[{pod_name}] Error creating lease: {e}")
+        logging.error(f"Pod {pod_name} could not create a lease: {e}")
         return None
-
 
 def try_acquire_leadership(api):
     now = datetime.datetime.now(datetime.timezone.utc)
+    # Fetch current Lease (or None if it doesn’t exist)
     lease = get_lease(api)
     if lease is None:
+        # Try to create it (first comers win)
         lease = create_lease(api)
-        if lease is not None:
-            return True
-        else:
-            return False
+        return True if lease is not None else False
 
     spec = lease.spec
+    # Determine if the existing lease has expired
     if spec.renew_time is None:
         expired = True
     else:
@@ -140,22 +148,31 @@ def try_acquire_leadership(api):
             last_renew = datetime.datetime.fromisoformat(last_renew.replace("Z", "+00:00"))
         expired = (now - last_renew).total_seconds() > spec.lease_duration_seconds
 
+    # If we already hold it or it’s expired, try to take it
     if spec.holder_identity == pod_name or expired:
         lease.spec.holder_identity = pod_name
         lease.spec.acquire_time = now
         lease.spec.renew_time = now
         lease.spec.lease_duration_seconds = lease_duration_seconds
+
         try:
             api.replace_namespaced_lease(lease_name, lease_namespace, lease)
-            logging.info(f"[{pod_name}] Acquired/renewed leadership.")
+            logging.info(f"Pod {pod_name} acquired/renewed leadership.")
             return True
-        except client.exceptions.ApiException as e:
-            logging.error(f"[{pod_name}] Failed to update lease: {e}")
-            return False
-    else:
-        logging.debug(f"[{pod_name}] Leadership held by {spec.holder_identity}.")
-        return False
 
+        except client.exceptions.ApiException as e:
+            if e.status == 409:
+                # Another pod updated the lease first—just back off
+                logging.debug(f"Pod {pod_name} had a lease update conflict; leadership held elsewhere.")
+                return False
+            else:
+                logging.error(f"Pod {pod_name} has failed to update lease: {e}")
+                return False
+
+    else:
+        # Someone else still holds a valid lease
+        logging.debug(f"Leadership held by {spec.holder_identity}.")
+        return False
 
 def renew_leadership(api):
     global leader_active
@@ -165,18 +182,18 @@ def renew_leadership(api):
         try:
             lease = get_lease(api)
             if lease is None:
-                logging.error(f"[{pod_name}] Lease not found.")
+                logging.error(f"Lease not found for Pod {pod_name}.")
                 leader_active = False
                 break
             if lease.spec.holder_identity != pod_name:
-                logging.error(f"[{pod_name}] Leadership lost (current leader: {lease.spec.holder_identity}).")
+                logging.error(f"Pod {pod_name} has lost leadership. (current leader: {lease.spec.holder_identity}).")
                 leader_active = False
                 break
             lease.spec.renew_time = now
             api.replace_namespaced_lease(lease_name, lease_namespace, lease)
-            logging.info(f"[{pod_name}] Renewed leadership at {now.isoformat()}.")
+            logging.info(f"Pod {pod_name} has renewed leadership at {now.isoformat()}.")
         except client.exceptions.ApiException as e:
-            logging.error(f"[{pod_name}] Error renewing lease: {e}")
+            logging.error(f"Pod {pod_name} had an error renewing lease: {e}")
             leader_active = False
             break
 
@@ -372,21 +389,18 @@ def schedule_version_check():
 def main():
     global leader_active
     logging.info("Starting cert-manager-key-vault-sync process.")
-    schedule_version_check()
-    load_initial_state()
-
-    # Start Prometheus metrics server on port 8000
-    start_http_server(8000)
-    logging.info("Prometheus metrics server started on port 8000")
 
     coordination_api = client.CoordinationV1Api()
     while True:
         if try_acquire_leadership(coordination_api):
             threading.Thread(target=renew_leadership, args=(coordination_api,), daemon=True).start()
-            logging.info(f"Acquired leadership as {pod_name}. Starting sync loop.")
+            logging.info(f"Pod {pod_name} acquired leadership. Starting sync loop.")
+            init_key_vault_client()
+            start_http_server(8000)
+            logging.info("Prometheus metrics server started on port 8000")
             break
         else:
-            logging.debug(f"Not the leader, retrying in {renew_interval_seconds} seconds.")
+            logging.debug(f"This Pod ({pod_name}) is not the leader, retrying in {renew_interval_seconds} seconds.")
             time.sleep(renew_interval_seconds)
 
     # Only run the following if this replica is the leader.
@@ -394,6 +408,10 @@ def main():
         sync_total.inc()
         sync_start = time.time()
         try:
+            schedule_version_check()
+            load_initial_state()
+
+            # Start Prometheus metrics server on port 8000
             sync_k8s_secrets_to_key_vault()
             sync_success_total.inc()
         except Exception as e:
@@ -408,7 +426,6 @@ def main():
 
     logging.error("Leadership lost, exiting process.")
     exit(1)
-
 
 if __name__ == "__main__":
     main()

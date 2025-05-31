@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cert-manager-key-vault-sync
+  name: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: cert-manager-key-vault-sync
-    app.kubernetes.io/instance: cert-manager-key-vault-sync
+    app.kubernetes.io/name: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
+    app.kubernetes.io/instance: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
     app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/name: cert-manager-key-vault-sync
         app.kubernetes.io/instance: cert-manager-key-vault-sync
     spec:
-      serviceAccountName: cert-manager-key-vault-sync
+      serviceAccountName: {{ .Release.Name | default "cert-manager-key-vault-sync" }}
       containers:
         - name: cert-manager-key-vault-sync
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

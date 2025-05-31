@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.0] - 2025-05-31
+
+### Changed
+
+- References to cert-manager-key-vault-sync in Helm Chart are now replaced with Release.Name [20](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/20)
+- Log output formatting
+
+### Updated
+
+- Tests to Go `1.24.x` from `1.21.x`
+- Pinned the kreuzwerker/docker Terraform provider to stable version `3.1.2`
+
 ## [v1.2.0] - 2025-03-16
 
 ### Added
