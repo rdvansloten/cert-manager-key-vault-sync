@@ -25,6 +25,10 @@ jobs:
         sudo apt install snap -y
         sudo snap install yq
 
+    - name: Check CPU
+      run: |
+        sudo lscpu
+      
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
