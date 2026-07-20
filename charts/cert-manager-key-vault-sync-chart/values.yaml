@@ -5,6 +5,10 @@ image:
 
 replicaCount: 3
 
+leaderElection:
+  leaseDurationSeconds: 60
+  renewIntervalSeconds: 15
+
 certificates:
   annotation: "cert-manager.io/certificate-name"
   # Is set to true, the namespace name is appended to the certificate name in the Key Vault
@@ -12,7 +16,10 @@ certificates:
   useNamespaces: "false"
   # Interval in seconds to check for new certificates
   checkInterval: 600
-  # Filter for the certificate names, supports wildcards
+  # Filter for the certificate names. Shell-style wildcards by default (e.g. "*somedomain*").
+  # Prefix with "regex:" to use a regular expression, which supports OR and exclusions, e.g.
+  #   filter: "regex:wildcard-(domainxyz|domainabc)"      # match either domain
+  #   filter: "regex:^(?!.*webhook).*wildcard.*"          # match wildcard certs, exclude webhook certs
   filter: "*"
 
 prometheus:
