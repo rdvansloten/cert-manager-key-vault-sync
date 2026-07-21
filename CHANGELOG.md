@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Pinned the `azurerm` Terraform provider to `~> 4`, using `user_assigned_identity_id` on `azurerm_federated_identity_credential`
 - Bumped the `kreuzwerker/docker` Terraform provider to `~> 4` from `3.1.2`, with explicit registry credential authentication
+- `setup-buildx-action@v4` from `setup-buildx-action@v3` 
+- `azure/login@v3` from `azure/login@v2`.
 - Documentation in wiki (regex certificate filter, leader election tuning)
 
 ## [v1.3.0] - 2025-05-31
