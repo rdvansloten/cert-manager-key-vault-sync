@@ -1,0 +1,103 @@
+version: '3'
+
+env:
+  DOCKER_REGISTRY_USER:
+    sh: >-
+      store=$(python3 -c "import json;print(json.load(open('$HOME/.docker/config.json')).get('credsStore',''))" 2>/dev/null);
+      { [ -n "$store" ] && echo https://index.docker.io/v1/ | "docker-credential-$store" get 2>/dev/null
+      | python3 -c "import sys,json;print(json.load(sys.stdin).get('Username',''))"; } 2>/dev/null || true
+  DOCKER_REGISTRY_PASS:
+    sh: >-
+      store=$(python3 -c "import json;print(json.load(open('$HOME/.docker/config.json')).get('credsStore',''))" 2>/dev/null);
+      { [ -n "$store" ] && echo https://index.docker.io/v1/ | "docker-credential-$store" get 2>/dev/null
+      | python3 -c "import sys,json;print(json.load(sys.stdin).get('Secret',''))"; } 2>/dev/null || true
+
+vars:
+  TF_DIR: test/terraform
+  CERT_AMOUNT: '{{.CERT_AMOUNT | default "5"}}'
+  PROD_REPO: rdvansloten/cert-manager-key-vault-sync
+  DOCKER_REGISTRY: '{{.DOCKER_REGISTRY | default "index.docker.io"}}'
+  DOCKER_REPO: '{{.DOCKER_REPO | default "rdvansloten/cert-manager-key-vault-sync-dev"}}'
+  TF_ARGS: -var="certificate_amount={{.CERT_AMOUNT}}" -var="docker_registry={{.DOCKER_REGISTRY}}" -var="docker_repository={{.DOCKER_REPO}}"
+
+tasks:
+  dev:build:
+    desc: Provision the persistent Azure dev environment, build & push the image, and deploy the Helm chart.
+    dir: '{{.TF_DIR}}'
+    preconditions:
+      - sh: '[ "{{.DOCKER_REPO}}" != "{{.PROD_REPO}}" ]'
+        msg: "Refusing to build: DOCKER_REPO is the PRODUCTION repo ({{.PROD_REPO}}). Set DOCKER_REPO to a separate dev repository."
+      - sh: az account show
+        msg: "Not logged into Azure. Run: az login"
+      - sh: docker info
+        msg: "Docker is not running. Start Docker Desktop and run: docker login"
+    cmds:
+      - tofu init -input=false -reconfigure
+      - tofu apply -input=false -auto-approve {{.TF_ARGS}}
+      - task: dev:kubeconfig
+      - cmd: echo "Dev environment is up (images -> {{.DOCKER_REGISTRY}}/{{.DOCKER_REPO}}). Export the KUBECONFIG shown above, then -> kubectl -n cert-manager-key-vault-sync get pods"
+        silent: true
+
+  dev:plan:
+    desc: Show the Terraform plan for the dev environment without applying it.
+    dir: '{{.TF_DIR}}'
+    cmds:
+      - tofu init -input=false -reconfigure
+      - tofu plan -input=false {{.TF_ARGS}}
+
+  dev:_writeconfig:
+    internal: true
+    dir: '{{.TF_DIR}}'
+    cmds:
+      - cmd: |
+          set -eu
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          tofu output -raw cluster_ca_certificate > "$tmp/ca.pem"
+          tofu output -raw client_certificate     > "$tmp/client.pem"
+          tofu output -raw client_key             > "$tmp/client.key"
+          host="$(tofu output -raw host)"
+          cluster="$(tofu output -raw cluster_name)"
+          {{if .KUBECONFIG_TARGET}}export KUBECONFIG="{{.KUBECONFIG_TARGET}}"; rm -f "$KUBECONFIG"{{end}}
+          kubectl config set-cluster "$cluster" --server="$host" --certificate-authority="$tmp/ca.pem" --embed-certs=true >/dev/null
+          kubectl config set-credentials "$cluster-admin" --client-certificate="$tmp/client.pem" --client-key="$tmp/client.key" --embed-certs=true >/dev/null
+          kubectl config set-context "$cluster" --cluster="$cluster" --user="$cluster-admin" >/dev/null
+          kubectl config use-context "$cluster" >/dev/null
+
+  dev:kubeconfig:
+    desc: Write a standalone kubeconfig for the dev AKS cluster from Terraform outputs (no az CLI needed).
+    vars:
+      KUBECONFIG_FILE: '{{.ROOT_DIR}}/{{.TF_DIR}}/dev-kubeconfig.yaml'
+    cmds:
+      - task: dev:_writeconfig
+        vars:
+          KUBECONFIG_TARGET: '{{.KUBECONFIG_FILE}}'
+      - cmd: echo "Wrote kubeconfig -> {{.KUBECONFIG_FILE}}"
+        silent: true
+      - cmd: echo "Use it with -> export KUBECONFIG={{.KUBECONFIG_FILE}}"
+        silent: true
+
+  dev:context:
+    desc: Merge the dev AKS cluster into your default kubeconfig (~/.kube/config) and switch to it.
+    dir: '{{.TF_DIR}}'
+    cmds:
+      - task: dev:_writeconfig
+        vars:
+          KUBECONFIG_TARGET: ''
+      - cmd: echo "Merged the dev cluster into your default kubeconfig and switched to context '$(tofu output -raw cluster_name)'."
+        silent: true
+
+  dev:output:
+    desc: Print the Terraform outputs for the dev environment.
+    dir: '{{.TF_DIR}}'
+    cmds:
+      - tofu output
+
+  dev:destroy:
+    desc: Destroy the entire Azure dev environment.
+    dir: '{{.TF_DIR}}'
+    preconditions:
+      - sh: az account show
+        msg: "Not logged into Azure. Run: az login"
+    cmds:
+      - tofu destroy -input=false -auto-approve {{.TF_ARGS}}

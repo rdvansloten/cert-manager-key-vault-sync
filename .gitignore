@@ -6,3 +6,4 @@
 *tfstate*
 *.log
 .ruff_cache
+dev-kubeconfig.yaml

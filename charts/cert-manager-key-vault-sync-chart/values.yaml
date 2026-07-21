@@ -1,6 +1,6 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v1.3.0
+  tag: v1.4.0
   pullPolicy: Always
 
 replicaCount: 3
@@ -26,7 +26,6 @@ prometheus:
   enabled: true
 
 azure:
-  # Name of the Key Vault, do not enter the full URI here
   keyVaultName: ""
 
   # Properties of the Managed Identity used to access the Key Vault

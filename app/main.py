@@ -66,7 +66,7 @@ def matches_certificate_filter(name):
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
 github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v1.3.0"
+current_version = "v1.4.0"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Leader election variables
@@ -106,9 +106,15 @@ def init_key_vault_client():
     certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
 
     try:
-        logging.info("Detected Key Vault Certificates:")
-        for cert in certificate_client.list_properties_of_certificates():
-            logging.info(cert.name)
+        cert_names = [
+            cert.name
+            for cert in certificate_client.list_properties_of_certificates()
+            if matches_certificate_filter(cert.name)
+        ]
+        if cert_names:
+            logging.info("Detected Key Vault Certificates (filter: %s):\n%s", certificate_name_filter, "\n".join(f"  - {name}" for name in cert_names))
+        else:
+            logging.info("Detected Key Vault Certificates (filter: %s): none.", certificate_name_filter)
 
         logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
 
@@ -286,11 +292,17 @@ def load_initial_state():
     try:
         secrets = k8s_client.list_secret_for_all_namespaces(field_selector="type=kubernetes.io/tls")
         logging.info("Connection to Kubernetes successful.")
-        logging.info("Detected Secrets:")
-        for secret in secrets.items:
-            annotations = secret.metadata.annotations
-            if annotations and filter_annotation in annotations:
-                logging.info(f"- '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'")
+        detected_secrets = [
+            f"  - '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'"
+            for secret in secrets.items
+            if secret.metadata.annotations
+            and filter_annotation in secret.metadata.annotations
+            and matches_certificate_filter(secret.metadata.annotations[filter_annotation])
+        ]
+        if detected_secrets:
+            logging.info("Detected Secrets (filter: %s):\n%s", certificate_name_filter, "\n".join(detected_secrets))
+        else:
+            logging.info("Detected Secrets (filter: %s): none.", certificate_name_filter)
     except Exception as e:
         logging.error(f"Failed to load Secrets from Kubernetes: {str(e)}")
 
@@ -473,12 +485,22 @@ def main():
 
     while True:
         leader_active = False
+        # Announce the follower role at INFO once, and again only if the observed
+        # leader changes — so standby pods report their role without spamming
+        # every retry interval.
+        last_leader = None
         while not try_acquire_leadership(coordination_api):
-            logging.debug(f"This Pod ({pod_name}) is not the leader, retrying in {acquire_retry_seconds} seconds.")
+            lease = get_lease(coordination_api)
+            current_leader = lease.spec.holder_identity if (lease and lease.spec and lease.spec.holder_identity) else "unknown"
+            if current_leader != last_leader:
+                logging.info(f"Pod {pod_name} is running as FOLLOWER (standby). Current leader: {current_leader}.")
+                last_leader = current_leader
+            else:
+                logging.debug(f"Pod {pod_name} still a follower (leader: {current_leader}); retrying in {acquire_retry_seconds}s.")
             time.sleep(acquire_retry_seconds)
 
         leader_active = True
-        logging.info(f"Pod {pod_name} acquired leadership. Starting sync loop.")
+        logging.info(f"Pod {pod_name} acquired leadership. Running as LEADER; starting sync loop.")
         run_leader_workload(coordination_api)
         logging.warning(f"Pod {pod_name} stepped down from leadership; returning to standby.")
 
