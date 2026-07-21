@@ -87,6 +87,20 @@ tasks:
       - cmd: echo "Merged the dev cluster into your default kubeconfig and switched to context '$(tofu output -raw cluster_name)'."
         silent: true
 
+  dev:test:
+    desc: Run the Go (terratest) end-to-end test — provisions an ephemeral AKS + Key Vault, asserts the sync metric, then destroys it. Pass SKIP_DESTROY=true to keep the environment.
+    dir: test
+    env:
+      # terratest defaults to the `terraform` binary; use the tofu we install via mise.
+      TERRAFORM_BINARY: tofu
+    preconditions:
+      - sh: az account show
+        msg: "Not logged into Azure. Run: az login"
+      - sh: docker info
+        msg: "Docker is not running. Start Docker Desktop and run: docker login"
+    cmds:
+      - go test -v -timeout 60m
+
   dev:output:
     desc: Print the Terraform outputs for the dev environment.
     dir: '{{.TF_DIR}}'
