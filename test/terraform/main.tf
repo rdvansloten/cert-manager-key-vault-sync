@@ -44,6 +44,7 @@ resource "azurerm_key_vault" "main" {
   tenant_id                     = data.azurerm_client_config.current.tenant_id
   sku_name                      = "standard"
   public_network_access_enabled = true
+  rbac_authorization_enabled    = true
 }
 
 resource "azurerm_user_assigned_identity" "main" {
