@@ -1,8 +1,9 @@
 [tools]
-cosign = "2.5"
-go = "1.24.3"
-helm = "v3.17.3"
-python = ["3.13"]
-opentofu = "v1.9.0"
+cosign = "3.1"
+go = "1.26.5"
+helm = "v4.2.3"
+python = "3.13"
+opentofu = "v1.12.4"
 uv = "0"
-kubectl = "v1.31.4"
+kubectl = "v1.36.2"
+task = "3"

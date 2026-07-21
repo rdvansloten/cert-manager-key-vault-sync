@@ -49,9 +49,19 @@ func TestTerraformAzureAKS(t *testing.T) {
 	dockerUsername := os.Getenv("DOCKER_REGISTRY_USER")
 	dockerPassword := os.Getenv("DOCKER_REGISTRY_PASS")
 
+	// Allow running the suite with OpenTofu locally (TERRAFORM_BINARY=tofu)
+	// while defaulting to terraform, as CI does.
+	terraformBinary := os.Getenv("TERRAFORM_BINARY")
+	if terraformBinary == "" {
+		terraformBinary = "terraform"
+	}
+
 	terraformOptions := &terraform.Options{
 		// Terraform folder
 		TerraformDir: "./terraform",
+
+		// Binary to invoke: terraform by default, tofu when TERRAFORM_BINARY=tofu
+		TerraformBinary: terraformBinary,
 
 		// Pass Terraform variables
 		Vars: map[string]interface{}{},

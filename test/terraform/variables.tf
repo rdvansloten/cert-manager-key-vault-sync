@@ -31,13 +31,13 @@ variable "certificate_domain" {
 variable "certificate_organization" {
   description = "Organization name for the certificate."
   type        = string
-  default     = "Yunikon B.V."
+  default     = "Yunikon"
 }
 
 variable "kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to install."
   type        = string
-  default     = "69.7.4"
+  default     = "87.17.0"
 }
 
 variable "kube_prometheus_stack_repository" {

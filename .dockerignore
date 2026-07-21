@@ -1,0 +1,25 @@
+# The image only needs app/ and the Dockerfile. Excluding everything else keeps
+# the build context tiny and avoids the kreuzwerker/docker Terraform provider
+# failing with "archive/tar: invalid tar header" when the context contains the
+# Terraform (.terraform provider binaries), Git, or local state directories.
+.git
+.github
+**/.terraform
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfstate.d
+
+# Local tooling / scratch that must never end up in the image or its context.
+test
+charts
+attachments
+.venv
+.certs
+.secrets
+*.log
+.ruff_cache
+mise.toml
+ruff.toml
+Taskfile.yml
+*.md

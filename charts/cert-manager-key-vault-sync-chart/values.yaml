@@ -1,9 +1,13 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v1.3.0
+  tag: v1.4.0
   pullPolicy: Always
 
 replicaCount: 3
+
+leaderElection:
+  leaseDurationSeconds: 60
+  renewIntervalSeconds: 15
 
 certificates:
   annotation: "cert-manager.io/certificate-name"
@@ -12,14 +16,16 @@ certificates:
   useNamespaces: "false"
   # Interval in seconds to check for new certificates
   checkInterval: 600
-  # Filter for the certificate names, supports wildcards
+  # Filter for the certificate names. Shell-style wildcards by default (e.g. "*somedomain*").
+  # Prefix with "regex:" to use a regular expression, which supports OR and exclusions, e.g.
+  #   filter: "regex:wildcard-(domainxyz|domainabc)"      # match either domain
+  #   filter: "regex:^(?!.*webhook).*wildcard.*"          # match wildcard certs, exclude webhook certs
   filter: "*"
 
 prometheus:
   enabled: true
 
 azure:
-  # Name of the Key Vault, do not enter the full URI here
   keyVaultName: ""
 
   # Properties of the Managed Identity used to access the Key Vault

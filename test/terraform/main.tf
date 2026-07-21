@@ -43,8 +43,8 @@ resource "azurerm_key_vault" "main" {
   resource_group_name           = azurerm_resource_group.main.name
   tenant_id                     = data.azurerm_client_config.current.tenant_id
   sku_name                      = "standard"
-  enable_rbac_authorization     = true
   public_network_access_enabled = true
+  rbac_authorization_enabled    = true
 }
 
 resource "azurerm_user_assigned_identity" "main" {
@@ -54,12 +54,11 @@ resource "azurerm_user_assigned_identity" "main" {
 }
 
 resource "azurerm_federated_identity_credential" "main" {
-  name                = "test"
-  resource_group_name = azurerm_resource_group.main.name
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  parent_id           = azurerm_user_assigned_identity.main.id
-  subject             = "system:serviceaccount:cert-manager-key-vault-sync:cert-manager-key-vault-sync"
+  name                      = "test"
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject                   = "system:serviceaccount:cert-manager-key-vault-sync:cert-manager-key-vault-sync"
+  user_assigned_identity_id = azurerm_user_assigned_identity.main.id
 }
 
 resource "azurerm_role_assignment" "cmkvs" {

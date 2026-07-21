@@ -46,6 +46,10 @@ spec:
               value: {{ .Values.azure.keyVaultName }}
             - name: CHECK_INTERVAL
               value: "{{ .Values.certificates.checkInterval | default 300 }}"
+            - name: LEASE_DURATION_SECONDS
+              value: "{{ .Values.leaderElection.leaseDurationSeconds | default 60 }}"
+            - name: RENEW_INTERVAL_SECONDS
+              value: "{{ .Values.leaderElection.renewIntervalSeconds | default 15 }}"
             - name: "ANNOTATION"
               value: "{{ .Values.certificates.annotation | default "cert-manager.io/certificate-name" }}"
             - name: USE_NAMESPACES

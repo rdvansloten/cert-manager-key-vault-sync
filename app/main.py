@@ -39,18 +39,42 @@ check_interval = int(os.getenv("CHECK_INTERVAL", "300"))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
 certificate_name_filter = os.getenv("CERT_NAME_FILTER", "*")
 
+_regex_prefix = "regex:"
+_certificate_name_regex = None
+_certificate_filter_broken = False
+if certificate_name_filter.startswith(_regex_prefix):
+    _regex_pattern = certificate_name_filter[len(_regex_prefix):]
+    try:
+        _certificate_name_regex = re.compile(_regex_pattern)
+    except re.error as e:
+        _certificate_filter_broken = True
+        logging.error(
+            f"Invalid regex in CERT_NAME_FILTER '{_regex_pattern}': {e}. "
+            "No certificates will be synced until this is corrected."
+        )
+
+
+def matches_certificate_filter(name):
+    '''Return True if a certificate name passes CERT_NAME_FILTER.'''
+    if _certificate_filter_broken:
+        return False
+    if _certificate_name_regex is not None:
+        return bool(_certificate_name_regex.search(name))
+    return fnmatch.fnmatch(name, certificate_name_filter)
+
 # GitHub version check variables
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
 github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v1.3.0"
+current_version = "v1.4.0"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Leader election variables
 lease_name = os.getenv("LEADER_ELECTION_LEASE_NAME", "cert-manager-key-vault-sync-leader")
 lease_namespace = os.getenv("POD_NAMESPACE", "cert-manager-key-vault-sync")
 lease_duration_seconds = int(os.getenv("LEASE_DURATION_SECONDS", "60"))
-renew_interval_seconds = int(os.getenv("RENEW_INTERVAL_SECONDS", "60"))
+renew_interval_seconds = int(os.getenv("RENEW_INTERVAL_SECONDS", str(max(1, lease_duration_seconds // 3))))
+acquire_retry_seconds = int(os.getenv("ACQUIRE_RETRY_SECONDS", str(renew_interval_seconds)))
 pod_name = os.getenv("POD_NAME", "unknown")
 leader_active = True
 
@@ -82,9 +106,15 @@ def init_key_vault_client():
     certificate_client = CertificateClient(vault_url=key_vault_uri, credential=credential)
 
     try:
-        logging.info("Detected Key Vault Certificates:")
-        for cert in certificate_client.list_properties_of_certificates():
-            logging.info(cert.name)
+        cert_names = [
+            cert.name
+            for cert in certificate_client.list_properties_of_certificates()
+            if matches_certificate_filter(cert.name)
+        ]
+        if cert_names:
+            logging.info("Detected Key Vault Certificates (filter: %s):\n%s", certificate_name_filter, "\n".join(f"  - {name}" for name in cert_names))
+        else:
+            logging.info("Detected Key Vault Certificates (filter: %s): none.", certificate_name_filter)
 
         logging.info(f"Initialized Azure Key Vault client using Key Vault '{key_vault_name}'.")
 
@@ -176,26 +206,40 @@ def try_acquire_leadership(api):
 
 def renew_leadership(api):
     global leader_active
+    # Wall-clock time of our last confirmed renewal. If we cannot renew for
+    # longer than the lease duration we can no longer assume we are the leader
+    # and must step down; a single transient error must not abdicate.
+    last_success = time.monotonic()
     while leader_active:
         time.sleep(renew_interval_seconds)
+        if not leader_active:
+            break
         now = datetime.datetime.now(datetime.timezone.utc)
         try:
             lease = get_lease(api)
             if lease is None:
-                logging.error(f"Lease not found for Pod {pod_name}.")
+                logging.warning(f"Lease disappeared; Pod {pod_name} is stepping down.")
                 leader_active = False
                 break
             if lease.spec.holder_identity != pod_name:
-                logging.error(f"Pod {pod_name} has lost leadership. (current leader: {lease.spec.holder_identity}).")
+                logging.warning(f"Pod {pod_name} no longer holds the lease (current leader: {lease.spec.holder_identity}); stepping down.")
                 leader_active = False
                 break
             lease.spec.renew_time = now
+            lease.spec.lease_duration_seconds = lease_duration_seconds
             api.replace_namespaced_lease(lease_name, lease_namespace, lease)
-            logging.info(f"Pod {pod_name} has renewed leadership at {now.isoformat()}.")
+            last_success = time.monotonic()
+            logging.debug(f"Pod {pod_name} renewed leadership at {now.isoformat()}.")
         except client.exceptions.ApiException as e:
-            logging.error(f"Pod {pod_name} had an error renewing lease: {e}")
-            leader_active = False
-            break
+            # A 409 means the lease was modified between our read and write.
+            if e.status == 409:
+                logging.debug(f"Pod {pod_name} hit a lease update conflict; will retry next tick.")
+            else:
+                logging.warning(f"Pod {pod_name} could not renew lease (will retry): {e.reason}")
+            if time.monotonic() - last_success > lease_duration_seconds:
+                logging.error(f"Pod {pod_name} failed to renew lease within {lease_duration_seconds}s; stepping down.")
+                leader_active = False
+                break
 
 
 # Compares the thumbprint from a Kubernetes certificate with the one from Key Vault.
@@ -246,13 +290,19 @@ def create_pfx(cert_data, key_data, cert_name):
 # Loads the initial state from Kubernetes and Key Vault, just a quick check.
 def load_initial_state():
     try:
-        secrets = k8s_client.list_secret_for_all_namespaces()
+        secrets = k8s_client.list_secret_for_all_namespaces(field_selector="type=kubernetes.io/tls")
         logging.info("Connection to Kubernetes successful.")
-        logging.info("Detected Secrets:")
-        for secret in secrets.items:
-            annotations = secret.metadata.annotations
-            if annotations and filter_annotation in annotations:
-                logging.info(f"- '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'")
+        detected_secrets = [
+            f"  - '{secret.metadata.name}' in namespace '{secret.metadata.namespace}'"
+            for secret in secrets.items
+            if secret.metadata.annotations
+            and filter_annotation in secret.metadata.annotations
+            and matches_certificate_filter(secret.metadata.annotations[filter_annotation])
+        ]
+        if detected_secrets:
+            logging.info("Detected Secrets (filter: %s):\n%s", certificate_name_filter, "\n".join(detected_secrets))
+        else:
+            logging.info("Detected Secrets (filter: %s): none.", certificate_name_filter)
     except Exception as e:
         logging.error(f"Failed to load Secrets from Kubernetes: {str(e)}")
 
@@ -287,7 +337,10 @@ def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
 
 # Syncs Kubernetes secrets to Key Vault by checking for new or updated certificates.
 def sync_k8s_secrets_to_key_vault():
-    response = k8s_client.list_secret_for_all_namespaces(_preload_content=False)
+    # Only pull TLS secrets
+    response = k8s_client.list_secret_for_all_namespaces(
+        field_selector="type=kubernetes.io/tls", _preload_content=False
+    )
     secrets_data = json.loads(response.data.decode("utf-8"))
 
     if not secrets_data.get("items"):
@@ -301,7 +354,7 @@ def sync_k8s_secrets_to_key_vault():
             cert_name = annotations[filter_annotation]
             namespace = metadata.get("namespace")
 
-            if not fnmatch.fnmatch(cert_name, certificate_name_filter):
+            if not matches_certificate_filter(cert_name):
                 logging.debug(f"Skipping certificate '{cert_name}' as it does not match filter '{certificate_name_filter}'")
                 continue
 
@@ -386,32 +439,20 @@ def schedule_version_check():
     version_check_thread.start()
 
 
-def main():
-    global leader_active
-    logging.info("Starting cert-manager-key-vault-sync process.")
+def run_leader_workload(api):
+    '''Run the sync loop for as long as this pod holds leadership.
 
-    coordination_api = client.CoordinationV1Api()
-    while True:
-        if try_acquire_leadership(coordination_api):
-            threading.Thread(target=renew_leadership, args=(coordination_api,), daemon=True).start()
-            logging.info(f"Pod {pod_name} acquired leadership. Starting sync loop.")
-            init_key_vault_client()
-            start_http_server(8000)
-            logging.info("Prometheus metrics server started on port 8000")
-            break
-        else:
-            logging.debug(f"This Pod ({pod_name}) is not the leader, retrying in {renew_interval_seconds} seconds.")
-            time.sleep(renew_interval_seconds)
+    Returns (rather than exiting the process) when leadership is lost, so the
+    caller can drop back to standby and try to re-acquire.
+    '''
+    init_key_vault_client()
+    threading.Thread(target=renew_leadership, args=(api,), daemon=True).start()
+    load_initial_state()
 
-    # Only run the following if this replica is the leader.
     while leader_active:
         sync_total.inc()
         sync_start = time.time()
         try:
-            schedule_version_check()
-            load_initial_state()
-
-            # Start Prometheus metrics server on port 8000
             sync_k8s_secrets_to_key_vault()
             sync_success_total.inc()
         except Exception as e:
@@ -421,11 +462,47 @@ def main():
             duration = time.time() - sync_start
             sync_duration_seconds.observe(duration)
             logging.debug(f"Sync cycle duration: {duration} seconds.")
-        logging.debug(f"Waiting for {check_interval} seconds.")
-        time.sleep(check_interval)
 
-    logging.error("Leadership lost, exiting process.")
-    exit(1)
+        # Sleep in small slices so we react promptly when leadership is lost
+        # instead of blocking for a full check_interval.
+        logging.debug(f"Waiting up to {check_interval} seconds.")
+        slept = 0
+        while slept < check_interval and leader_active:
+            nap = min(5, check_interval - slept)
+            time.sleep(nap)
+            slept += nap
+
+
+def main():
+    global leader_active
+    logging.info("Starting cert-manager-key-vault-sync process.")
+
+    coordination_api = client.CoordinationV1Api()
+
+    start_http_server(8000)
+    logging.info("Prometheus metrics server started on port 8000")
+    schedule_version_check()
+
+    while True:
+        leader_active = False
+        # Announce the follower role at INFO once, and again only if the observed
+        # leader changes — so standby pods report their role without spamming
+        # every retry interval.
+        last_leader = None
+        while not try_acquire_leadership(coordination_api):
+            lease = get_lease(coordination_api)
+            current_leader = lease.spec.holder_identity if (lease and lease.spec and lease.spec.holder_identity) else "unknown"
+            if current_leader != last_leader:
+                logging.info(f"Pod {pod_name} is running as FOLLOWER (standby). Current leader: {current_leader}.")
+                last_leader = current_leader
+            else:
+                logging.debug(f"Pod {pod_name} still a follower (leader: {current_leader}); retrying in {acquire_retry_seconds}s.")
+            time.sleep(acquire_retry_seconds)
+
+        leader_active = True
+        logging.info(f"Pod {pod_name} acquired leadership. Running as LEADER; starting sync loop.")
+        run_leader_workload(coordination_api)
+        logging.warning(f"Pod {pod_name} stepped down from leadership; returning to standby.")
 
 if __name__ == "__main__":
     main()

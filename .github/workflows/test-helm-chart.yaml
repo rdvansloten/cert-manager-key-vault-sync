@@ -29,9 +29,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - uses: jdx/mise-action@v2
+    - uses: jdx/mise-action@v4
       with:
-        version: 2025.3.6
         install: true
         cache: true
         experimental: true
@@ -44,14 +43,14 @@ jobs:
         sudo az aks install-cli
 
     - name: Azure login
-      uses: azure/login@v2
+      uses: azure/login@v3
       with:
         client-id: ${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }}
         tenant-id: ${{ secrets.TENANT_ID }}
         subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
       with:
         platforms: linux/amd64,linux/arm64
 
@@ -76,5 +75,8 @@ jobs:
       env:
         DOCKER_REGISTRY_PASS: ${{ secrets.DOCKER_PAT }}
         DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_USERNAME }}
+        # terratest defaults to the `terraform` binary, which isn't installed on
+        # the runner; mise provides opentofu, so point terratest at tofu.
+        TERRAFORM_BINARY: tofu
       run: |
         go test -v -timeout 60m

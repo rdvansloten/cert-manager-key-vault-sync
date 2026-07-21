@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.4.0] - 2026-07-21
+
+### Added
+
+- Regex support for the certificate name filter via a `regex:` prefix on `CERT_NAME_FILTER` / `certificates.filter`, enabling OR-matching and exclusions. Wildcards remain the default so existing configs are unchanged ([#26](https://github.com/rdvansloten/cert-manager-key-vault-sync/issues/26))
+- Leader/follower role logging at startup, so standby pods report their role and the current leader
+- `leaderElection.leaseDurationSeconds` and `leaderElection.renewIntervalSeconds` to the Helm chart to tune leader election
+- `Taskfile.yml` with `dev:*` tasks to build, destroy and connect to a persistent local Azure dev environment (mirrors the test workflow without running the tests)
+- `task` to `mise.toml`
+- `.dockerignore` to shrink the Docker build context
+
+### Changed
+
+- `Detected Secrets` and `Detected Key Vault Certificates` startup logs are now single multi-line entries, filtered by the active name filter, and show the filter in the header
+- Leader election now renews the lease well within its duration (default: a third of it) instead of at the same interval, preventing followers from racing the leader
+- Loss of leadership now steps the pod down to standby and re-attempts acquisition instead of exiting the process
+- Startup inventory and `sync_k8s_secrets_to_key_vault()` now list only `kubernetes.io/tls` secrets via a field selector to reduce per-cycle memory
+
+### Fixed
+
+- Unbounded memory growth over time caused by a version-check thread being spawned on every sync cycle; `schedule_version_check()` and `load_initial_state()` now run once
+- `409 Conflict` on the leader election lease no longer terminates the Pod; conflicts and transient API errors are retried, and the Pod only steps down if it cannot renew within the lease duration
+- Registry image is no longer deleted on destroy (`keep_remotely`), since Docker Hub does not support deletes via the registry API
+
+### Updated
+
+- Pinned the `azurerm` Terraform provider to `~> 4`, using `user_assigned_identity_id` on `azurerm_federated_identity_credential`
+- Bumped the `kreuzwerker/docker` Terraform provider to `~> 4` from `3.1.2`, with explicit registry credential authentication
+- `setup-buildx-action@v4` from `setup-buildx-action@v3` 
+- `azure/login@v3` from `azure/login@v2`.
+- `build-push-action@v7` from `build-push-action@v6`
+- Documentation in wiki (regex certificate filter, leader election tuning)
+
 ## [v1.3.0] - 2025-05-31
 
 ### Changed
