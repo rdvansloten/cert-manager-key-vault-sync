@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alpine packages in the image, Terraform providers and the Azure CLI are pinned to exact versions
 - The unused system `pip` is removed from the image
 - End-to-end tests always run with OpenTofu instead of Terraform
+- End-to-end tests run on a pinned AKS Kubernetes version instead of the AKS default
 
 ### Updated
 
