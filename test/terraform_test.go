@@ -25,11 +25,12 @@ func fetchSensitiveOutput(t *testing.T, options *terraform.Options, name string)
 		options.Logger = nil
 	}()
 	options.Logger = logger.Discard
-	return terraform.Output(t, options, name)
+	return terraform.OutputContext(t, t.Context(), options, name)
 }
 
 func TestTerraformAzureAKS(t *testing.T) {
 	t.Parallel()
+	ctx := t.Context()
 
 	// Try to start Docker Desktop on macOS or Windows (ignore any errors)
 	if osName := runtime.GOOS; osName == "darwin" || osName == "windows" {
@@ -79,21 +80,21 @@ func TestTerraformAzureAKS(t *testing.T) {
 
 	// Conditionally destroy resources unless SKIP_DESTROY env var is set to "true"
 	if os.Getenv("SKIP_DESTROY") != "true" {
-		defer terraform.Destroy(t, terraformOptions)
+		defer terraform.DestroyContext(t, ctx, terraformOptions)
 	} else {
 		t.Log("SKIP_DESTROY is set; skipping terraform.Destroy() to preserve the environment.")
 	}
 
 	// Deploy resources
-	terraform.InitAndApply(t, terraformOptions)
+	terraform.InitAndApplyContext(t, ctx, terraformOptions)
 
 	// Retrieve outputs
 	host := fetchSensitiveOutput(t, terraformOptions, "host")
 	clientCert := fetchSensitiveOutput(t, terraformOptions, "client_certificate")
 	clientKey := fetchSensitiveOutput(t, terraformOptions, "client_key")
 	clusterCACert := fetchSensitiveOutput(t, terraformOptions, "cluster_ca_certificate")
-	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
-	clusterName := terraform.Output(t, terraformOptions, "cluster_name")
+	resourceGroupName := terraform.OutputContext(t, ctx, terraformOptions, "resource_group_name")
+	clusterName := terraform.OutputContext(t, ctx, terraformOptions, "cluster_name")
 
 	// Validate that the output names match the expected patterns.
 	rgPattern := regexp.MustCompile(`^test-[a-z0-9]{4}-cmkvs01$`)

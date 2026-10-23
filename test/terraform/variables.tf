@@ -37,7 +37,8 @@ variable "certificate_organization" {
 variable "kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to install."
   type        = string
-  default     = "87.17.0"
+  # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+  default = "92.11.0"
 }
 
 variable "kube_prometheus_stack_repository" {

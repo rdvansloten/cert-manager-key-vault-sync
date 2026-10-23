@@ -32,6 +32,10 @@ resource "azurerm_kubernetes_cluster" "main" {
     }
   }
 
+  node_provisioning_profile {
+    mode = "Manual"
+  }
+
   identity {
     type = "SystemAssigned"
   }
@@ -132,25 +136,24 @@ resource "helm_release" "prometheus" {
   version          = var.kube_prometheus_stack_version
 
   # If these values are not set to 'false', the label 'release: prometheus' is required on the ServiceMonitor
-  set {
-    name  = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues"
-    value = "false"
-  }
-
-  set {
-    name  = "prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues"
-    value = "false"
-  }
-
-  set {
-    name  = "prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues"
-    value = "false"
-  }
-
-  set {
-    name  = "prometheus.prometheusSpec.probeSelectorNilUsesHelmValues"
-    value = "false"
-  }
+  set = [
+    {
+      name  = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues"
+      value = "false"
+    },
+    {
+      name  = "prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues"
+      value = "false"
+    },
+    {
+      name  = "prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues"
+      value = "false"
+    },
+    {
+      name  = "prometheus.prometheusSpec.probeSelectorNilUsesHelmValues"
+      value = "false"
+    }
+  ]
 }
 
 resource "helm_release" "cert-manager-key-vault-sync" {
@@ -167,45 +170,40 @@ resource "helm_release" "cert-manager-key-vault-sync" {
     tls_self_signed_cert.main
   ]
 
-  set {
-    name  = "image.repository"
-    value = var.docker_repository
-  }
-
-  set {
-    name  = "image.tag"
-    value = "test-${random_string.main.result}"
-  }
-
-  set {
-    name  = "azure.keyVaultName"
-    value = azurerm_key_vault.main.name
-  }
-
-  set {
-    name  = "azure.workloadIdentity.clientId"
-    value = azurerm_user_assigned_identity.main.client_id
-  }
-
-  set {
-    name  = "azure.workloadIdentity.subscriptionId"
-    value = data.azurerm_client_config.current.subscription_id
-  }
-
-  set {
-    name  = "azure.workloadIdentity.tenantId"
-    value = data.azurerm_client_config.current.tenant_id
-  }
-
-  set {
-    name  = "Dockerfile"
-    value = local.docker_triggers.Dockerfile
-  }
-
-  set {
-    name  = "App"
-    value = local.docker_triggers.App
-  }
+  set = [
+    {
+      name  = "image.repository"
+      value = var.docker_repository
+    },
+    {
+      name  = "image.tag"
+      value = "test-${random_string.main.result}"
+    },
+    {
+      name  = "azure.keyVaultName"
+      value = azurerm_key_vault.main.name
+    },
+    {
+      name  = "azure.workloadIdentity.clientId"
+      value = azurerm_user_assigned_identity.main.client_id
+    },
+    {
+      name  = "azure.workloadIdentity.subscriptionId"
+      value = data.azurerm_client_config.current.subscription_id
+    },
+    {
+      name  = "azure.workloadIdentity.tenantId"
+      value = data.azurerm_client_config.current.tenant_id
+    },
+    {
+      name  = "Dockerfile"
+      value = local.docker_triggers.Dockerfile
+    },
+    {
+      name  = "App"
+      value = local.docker_triggers.App
+    }
+  ]
 }
 
 # Docker
