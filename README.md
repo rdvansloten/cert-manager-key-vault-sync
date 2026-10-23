@@ -71,4 +71,4 @@ Pull requests are the best way to propose changes. I actively welcome your Pull 
 
 ### Dependency updates
 
-Dependencies are checked for updates and security fixes every week. When the container image changes, for example a new Python base image or a patched package, it is tested and published as a new patch release of the application and Helm chart.
+Dependencies are checked for updates and security fixes every week, and the published image is scanned for known vulnerabilities. When the container image changes, for example a new Python base image or a patched package, it is tested and published as a new patch release of the application and Helm chart.

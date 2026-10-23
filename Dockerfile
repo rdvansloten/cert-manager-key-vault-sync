@@ -24,8 +24,9 @@ RUN uv venv --python=python3.15 /home/haro/.venv && \
 # Copy the installed packages to a final image
 FROM python:3.15.1-alpine3.24@sha256:54448f67d7c31c39e5cdd3ea2d6382395ce142806c284425f8e897d78a0465b3
 
-# Install openssl, required for certificate generation
-RUN apk add --no-cache openssl=3.5.9-r0
+# Install openssl, required for certificate generation, and remove the unused system pip
+RUN apk add --no-cache openssl=3.5.9-r0 && \
+    python -m pip uninstall --yes --root-user-action=ignore pip
 
 # Create a non-root user and group in the final image
 RUN addgroup -S corgis && adduser -S haro -G corgis

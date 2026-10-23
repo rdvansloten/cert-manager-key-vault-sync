@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Weekly dependency and security updates with Renovate
+- CVE scans of the image on every pull request and weekly on the published image
 
 ### Changed
 
@@ -17,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build dependencies are locked with hashes in `app/build-constraints.txt`, and the compilers are no longer installed in the build stage
 - Container images and GitHub Actions are pinned to digests
 - Alpine packages in the image, Terraform providers and the Azure CLI are pinned to exact versions
+- The unused system `pip` is removed from the image
+- End-to-end tests always run with OpenTofu instead of Terraform
 
 ### Updated
 

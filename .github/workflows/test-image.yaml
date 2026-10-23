@@ -10,6 +10,10 @@ on:
       - 'app/**'
       - 'Dockerfile'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     name: Build Docker Image
@@ -32,3 +36,43 @@ jobs:
         context: .
         push: false
         tags: ${{ github.repository }}:gh-run-${{ github.run_id }}
+
+    - name: Load amd64 image for scanning
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        platforms: linux/amd64
+        context: .
+        load: true
+        tags: cve-scan:${{ github.run_id }}
+
+    - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      with:
+        version: 2026.10.18
+        install_args: trivy
+        cache: false
+
+    - name: Scan image for CVEs
+      id: scan
+      run: |
+        bash .github/scripts/cve-report.sh cve-scan:${{ github.run_id }} cve-report.md
+        cat cve-report.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment scan results on the PR
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+          --jq '.[] | select(.body | startswith("<!-- cve-report -->")) | .id' | head -n 1)"
+        if [ -n "$id" ]; then
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@cve-report.md >/dev/null
+        else
+          gh pr comment "$PR" --body-file cve-report.md
+        fi
+
+    - name: Fail on fixable HIGH or CRITICAL CVEs
+      if: steps.scan.outputs.fixable != '0'
+      run: |
+        echo "::error::${{ steps.scan.outputs.fixable }} HIGH/CRITICAL CVEs have a fix available"
+        exit 1

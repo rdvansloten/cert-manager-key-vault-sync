@@ -1,6 +1,6 @@
 # Test Environment for cert-manager-key-vault-sync
 
-This directory contains Terraform configurations and Terratest files to set up a test environment for the cert-manager-key-vault-sync project. The environment includes:
+This directory contains OpenTofu configurations and Terratest files to set up a test environment for the cert-manager-key-vault-sync project. The environment includes:
 
 - Azure Kubernetes Service (AKS) cluster with Managed Prometheus
 - Azure Key Vault
@@ -10,8 +10,8 @@ This directory contains Terraform configurations and Terratest files to set up a
 ## Prerequisites
 
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli#install) (`>= 2.x`)
-- [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) (`>= 1.x`)
-- [Go](https://go.dev/doc/install) (`>= 1.24`)
+- [OpenTofu](https://opentofu.org/docs/intro/install/) (`>= 1.13`)
+- [Go](https://go.dev/doc/install) (`>= 1.26`)
 - [Mise](https://mise.jdx.dev/getting-started.html#getting-started) (`>= 2025.x`)
 - [Docker](https://docs.docker.com/desktop/) (`>= 27.x`)
 
@@ -72,7 +72,8 @@ az aks get-credentials --resource-group cert-manager-kv-test --name cert-manager
 To clean up:
 
 ```bash
-terraform destroy
+cd ./terraform
+tofu destroy
 ```
 
 ## Configuration
@@ -84,9 +85,3 @@ You can modify the following variables in `terraform/variables.tf`:
 - `cluster_name`: Name of the AKS cluster
 - `acr_name`: Name of the Azure Container Registry
 - `node_count`: Number of nodes in the AKS cluster
-
-## Notes
-
-- The test environment uses Azure Managed Prometheus for monitoring
-- ACR admin credentials are enabled for easy testing
-- The AKS cluster has the necessary permissions to pull images from ACR
