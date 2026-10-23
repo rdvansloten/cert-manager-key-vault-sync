@@ -112,3 +112,11 @@ tasks:
         msg: "Not logged into Azure. Run: az login"
     cmds:
       - tofu destroy -input=false -auto-approve {{.TF_ARGS}}
+
+  release:bump:
+    desc: Bump the app and Helm chart patch version and add a CHANGELOG entry, counting from BASE (default main). Renovate does this on its own image PRs.
+    vars:
+      BASE: '{{.BASE | default "main"}}'
+    cmds:
+      - git fetch --quiet origin {{.BASE}}
+      - bash .github/scripts/bump-release.sh {{.BASE}}
