@@ -1,5 +1,7 @@
+min_version = "2026.10.18"
+
 [tools]
-azure-cli = { version = "2.91.0", uvx_args = "--python 3.13.17" }
+azure-cli = { version = "2.91.0", python = "3.13.17" }
 cosign = "3.1.4"
 go = "1.27.3"
 helm = "v4.3.1"
