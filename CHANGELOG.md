@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Weekly dependency and security updates with Renovate
 - CVE scans of the image on every pull request and weekly on the published image
+- Nightly cleanup of test resource groups left behind by the end-to-end tests
 
 ### Changed
 

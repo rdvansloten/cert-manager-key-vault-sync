@@ -9,6 +9,11 @@ resource "azurerm_resource_group" "main" {
   name     = "test-${random_string.main.result}-cmkvs01"
   location = var.location
 
+  tags = {
+    project      = "cert-manager-key-vault-sync"
+    auto-cleanup = tostring(var.auto_cleanup)
+  }
+
   # Build Docker image before even trying to create Azure resources
   depends_on = [docker_registry_image.main]
 }

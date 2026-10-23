@@ -3,8 +3,10 @@ min_version = "2026.10.18"
 [tools]
 azure-cli = { version = "2.91.0", python = "3.13.17" }
 cosign = "3.1.4"
+gh = "2.103.1"
 go = "1.27.3"
 helm = "v4.3.1"
+jq = "1.8.2"
 python = "3.15.1"
 opentofu = "v1.13.2"
 uv = "0.13.5"

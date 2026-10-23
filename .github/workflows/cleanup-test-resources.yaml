@@ -1,0 +1,80 @@
+name: Clean Up Test Resources
+
+on:
+  schedule:
+    # 04:00 Europe/Amsterdam (CEST, CET)
+    - cron: "0 2 * * *"
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cleanup-test-resources
+  cancel-in-progress: false
+
+env:
+  MAX_AGE_HOURS: 4
+
+jobs:
+  gate:
+    name: Check Amsterdam time
+    runs-on: ubuntu-26.04
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Keep the run for the current UTC offset
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          offset="$(TZ=Europe/Amsterdam date +%z)"
+          run=true
+          if [ "$EVENT" = "schedule" ]; then
+            case "$SCHEDULE|$offset" in
+              "0 2 * * *|+0200" | "0 3 * * *|+0100") run=true ;;
+              *) run=false ;;
+            esac
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  cleanup:
+    name: Delete leftover test resource groups
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+
+      - name: Azure login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.WORKLOAD_IDENTITY_CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+      - name: Delete tagged resource groups older than ${{ env.MAX_AGE_HOURS }} hours
+        env:
+          SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
+        run: |
+          cutoff="$(date -u -d "-$MAX_AGE_HOURS hours" +%Y-%m-%dT%H:%M:%SZ)"
+          groups="$(az rest --method get \
+            --url "https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourcegroups?api-version=2021-04-01&\$expand=createdTime&\$filter=tagName eq 'auto-cleanup' and tagValue eq 'true'" \
+            --query "value[?createdTime < '$cutoff'].name" -o tsv)"
+          if [ -z "$groups" ]; then
+            echo "No leftover test resource groups." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "Deleting resource groups created before $cutoff:" | tee -a "$GITHUB_STEP_SUMMARY"
+          for group in $groups; do
+            echo "- \`$group\`" | tee -a "$GITHUB_STEP_SUMMARY"
+            az group delete --name "$group" --yes --no-wait
+          done

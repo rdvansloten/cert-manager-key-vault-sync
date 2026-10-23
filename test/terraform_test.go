@@ -57,7 +57,9 @@ func TestTerraformAzureAKS(t *testing.T) {
 		TerraformBinary: "tofu",
 
 		// Pass Terraform variables
-		Vars: map[string]interface{}{},
+		Vars: map[string]interface{}{
+			"auto_cleanup": true,
+		},
 
 		// Pass Docker auth environment variables to Terraform's shell environment
 		EnvVars: map[string]string{

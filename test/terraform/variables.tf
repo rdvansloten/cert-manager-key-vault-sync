@@ -1,3 +1,9 @@
+variable "auto_cleanup" {
+  description = "Tag the resource group so the nightly cleanup workflow deletes it when it is left behind."
+  type        = bool
+  default     = false
+}
+
 variable "location" {
   description = "Azure region to deploy resources"
   type        = string
