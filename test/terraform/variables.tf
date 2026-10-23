@@ -1,3 +1,9 @@
+variable "auto_cleanup" {
+  description = "Tag the resource group so the nightly cleanup workflow deletes it when it is left behind."
+  type        = bool
+  default     = false
+}
+
 variable "location" {
   description = "Azure region to deploy resources"
   type        = string
@@ -34,10 +40,18 @@ variable "certificate_organization" {
   default     = "Yunikon"
 }
 
+variable "kubernetes_version" {
+  description = "Kubernetes minor version of the AKS cluster. AKS picks the latest patch."
+  type        = string
+  # renovate: datasource=endoflife-date depName=azure-kubernetes-service versioning=loose
+  default = "1.36"
+}
+
 variable "kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to install."
   type        = string
-  default     = "87.17.0"
+  # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+  default = "92.11.0"
 }
 
 variable "kube_prometheus_stack_repository" {

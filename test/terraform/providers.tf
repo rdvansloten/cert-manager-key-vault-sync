@@ -2,35 +2,33 @@ terraform {
   required_providers {
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2"
+      version = "3.3.0"
     }
     azurerm = {
       source  = "hashicorp/azurerm"
-      # Needs 4.65+ for user_assigned_identity_id on azurerm_federated_identity_credential;
-      # ~> 4 tracks the latest v4.
-      version = "~> 4"
+      version = "5.11.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 4"
+      version = "4.6.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3"
+      version = "3.9.1"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2"
+      version = "3.4.0"
     }
     tls = {
       source  = "hashicorp/tls"
-      version = "~> 4"
+      version = "4.4.2"
     }
   }
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     host                   = azurerm_kubernetes_cluster.main.kube_config.0.host
     client_certificate     = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_certificate)
     client_key             = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_key)

@@ -39,7 +39,7 @@ tasks:
         silent: true
 
   dev:plan:
-    desc: Show the Terraform plan for the dev environment without applying it.
+    desc: Show the OpenTofu plan for the dev environment without applying it.
     dir: '{{.TF_DIR}}'
     cmds:
       - tofu init -input=false -reconfigure
@@ -65,7 +65,7 @@ tasks:
           kubectl config use-context "$cluster" >/dev/null
 
   dev:kubeconfig:
-    desc: Write a standalone kubeconfig for the dev AKS cluster from Terraform outputs (no az CLI needed).
+    desc: Write a standalone kubeconfig for the dev AKS cluster from OpenTofu outputs (no az CLI needed).
     vars:
       KUBECONFIG_FILE: '{{.ROOT_DIR}}/{{.TF_DIR}}/dev-kubeconfig.yaml'
     cmds:
@@ -90,9 +90,6 @@ tasks:
   dev:test:
     desc: Run the Go (terratest) end-to-end test — provisions an ephemeral AKS + Key Vault, asserts the sync metric, then destroys it. Pass SKIP_DESTROY=true to keep the environment.
     dir: test
-    env:
-      # terratest defaults to the `terraform` binary; use the tofu we install via mise.
-      TERRAFORM_BINARY: tofu
     preconditions:
       - sh: az account show
         msg: "Not logged into Azure. Run: az login"
@@ -102,7 +99,7 @@ tasks:
       - go test -v -timeout 60m
 
   dev:output:
-    desc: Print the Terraform outputs for the dev environment.
+    desc: Print the OpenTofu outputs for the dev environment.
     dir: '{{.TF_DIR}}'
     cmds:
       - tofu output
@@ -115,3 +112,11 @@ tasks:
         msg: "Not logged into Azure. Run: az login"
     cmds:
       - tofu destroy -input=false -auto-approve {{.TF_ARGS}}
+
+  release:bump:
+    desc: Bump the app and Helm chart patch version and add a CHANGELOG entry, counting from BASE (default main). Renovate does this on its own image PRs.
+    vars:
+      BASE: '{{.BASE | default "main"}}'
+    cmds:
+      - git fetch --quiet origin {{.BASE}}
+      - bash .github/scripts/bump-release.sh {{.BASE}}

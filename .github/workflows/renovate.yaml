@@ -1,0 +1,74 @@
+name: Renovate
+
+on:
+  schedule:
+    # Sundays 10:00 Europe/Amsterdam (CEST, CET)
+    - cron: "0 8 * * 0"
+    - cron: "0 9 * * 0"
+  workflow_dispatch:
+    inputs:
+      loglevel:
+        description: Renovate log level
+        required: true
+        default: info
+        type: choice
+        options:
+          - trace
+          - debug
+          - info
+          - warn
+          - error
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Check Amsterdam time
+    runs-on: ubuntu-26.04
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Keep the run for the current UTC offset
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          offset="$(TZ=Europe/Amsterdam date +%z)"
+          run=true
+          if [ "$EVENT" = "schedule" ]; then
+            case "$SCHEDULE|$offset" in
+              "0 8 * * 0|+0200" | "0 9 * * 0|+0100") run=true ;;
+              *) run=false ;;
+            esac
+          fi
+          echo "Amsterdam offset $offset, schedule '$SCHEDULE', run=$run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  renovate:
+    name: Renovate
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-26.04
+    env:
+      # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
+      RENOVATE_VERSION: 44.181.0@sha256:1a06e15f2d8bc08342828ec43c0a90de0ac9192900f513af90e77765e0991b6d
+    steps:
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+          renovate-version: ${{ env.RENOVATE_VERSION }}
+        env:
+          LOG_LEVEL: ${{ inputs.loglevel || 'info' }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          RENOVATE_PR_HOURLY_LIMIT: "0"
+          RENOVATE_PR_CONCURRENT_LIMIT: "10"
+          RENOVATE_ALLOWED_COMMANDS: '["^bash \\.github/scripts/bump-release\\.sh [A-Za-z0-9._/-]+$"]'

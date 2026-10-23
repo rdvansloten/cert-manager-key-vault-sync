@@ -7,8 +7,8 @@ Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azu
 
 | Component   | Version | Status                                                                                                                           |
 | ----------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Helm Chart  | v1.3.1  | ![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg) |
-| Application | v1.4.0  | ![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)    |
+| Helm Chart  | v1.3.2  | ![Helm Chart](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-helm-chart.yaml/badge.svg) |
+| Application | v1.4.1  | ![Docker Image](https://github.com/rdvansloten/cert-manager-key-vault-sync/actions/workflows/build-push-image.yaml/badge.svg)    |
 
 ## Features
 
@@ -39,14 +39,14 @@ export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
     oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart \
     --values ./charts/cert-manager-key-vault-sync-chart/values.yaml \
-    --version v1.3.1 \
+    --version v1.3.2 \
     --namespace cert-manager-key-vault-sync --create-namespace
 ```
 
 If you wish to use raw Kubernetes manifests instead, you may render the Helm template to plain YAML using the command below.
 
 ```sh
-helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart --version v1.3.1 \
+helm template cert-manager-key-vault-sync oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart --version v1.3.2 \
     --values ./charts/cert-manager-key-vault-sync-chart/values.yaml > output.yaml
 ```
 
@@ -68,3 +68,7 @@ Pull requests are the best way to propose changes. I actively welcome your Pull 
 2. If you've added code that should be tested, add some test examples.
 3. Update the documentation.
 4. Submit that Pull Request!
+
+### Dependency updates
+
+Dependencies are checked for updates and security fixes every week, and the published image is scanned for known vulnerabilities. When the container image changes, for example a new Python base image or a patched package, it is tested and published as a new patch release of the application and Helm chart.

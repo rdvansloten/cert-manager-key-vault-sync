@@ -1,0 +1,6 @@
+azure-identity==1.26.*
+azure-keyvault-certificates==4.11.*
+kubernetes==37.0.*
+requests==2.34.*
+packaging==26.*
+prometheus-client==0.26.*

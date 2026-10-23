@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.4.1] - 2026-10-23
+
+### Added
+
+- Weekly dependency and security updates with Renovate
+- CVE scans of the image on every pull request and weekly on the published image
+- Nightly cleanup of test resource groups left behind by the end-to-end tests
+
+### Changed
+
+- Python packages are locked to exact versions with hashes in `app/requirements.txt`, generated from `app/requirements.in`
+- Build dependencies are locked with hashes in `app/build-constraints.txt`, and the compilers are no longer installed in the build stage
+- Container images and GitHub Actions are pinned to digests
+- Alpine packages in the image, Terraform providers and the Azure CLI are pinned to exact versions
+- The unused system `pip` is removed from the image
+- End-to-end tests always run with OpenTofu instead of Terraform
+- End-to-end tests run on a pinned AKS Kubernetes version instead of the AKS default
+
+### Updated
+
+- `python:3.15.1-alpine3.24` from `python:3.13-alpine3.21`
+- `kubernetes==37.0.*` from `kubernetes==32.0.*`
+- `packaging==26.*` from `packaging==25.*`
+- `requests==2.34.*` from `requests==2.32.*` (security fix)
+- `azure-identity==1.26.*` from `azure-identity==1.23.*`
+- `azure-keyvault-certificates==4.11.*` from `azure-keyvault-certificates==4.9.*`
+- `prometheus-client==0.26.*` from `prometheus-client==0.22.*`
+- GitHub Actions to their latest major versions, and runners to `ubuntu-26.04`
+- End-to-end tests: `azurerm` 5, `helm` 3 and `kubernetes` 3 Terraform providers, `kube-prometheus-stack` 92, terratest 1.0
+
 ## [v1.4.0] - 2026-07-21
 
 ### Added

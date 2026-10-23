@@ -1,0 +1,180 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    'helpers:pinGitHubActionDigestsToSemver',
+    'docker:pinDigests',
+  ],
+  timezone: 'Europe/Amsterdam',
+  automerge: false,
+  configMigration: true,
+  ignoreUnstable: true,
+  dependencyDashboard: true,
+  osvVulnerabilityAlerts: true,
+  vulnerabilityAlerts: {
+    labels: [
+      'security',
+    ],
+  },
+  labels: [
+    'renovate',
+    '{{{updateType}}}',
+  ],
+  ignorePaths: [
+    '**/node_modules/**',
+  ],
+  postUpdateOptions: [
+    'gomodTidy',
+  ],
+  'pip-compile': {
+    managerFilePatterns: [
+      '/^app/requirements\\.txt$/',
+      '/^app/build-constraints\\.txt$/',
+    ],
+  },
+  pip_requirements: {
+    enabled: false,
+  },
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: [
+      '* * * * 0',
+    ],
+  },
+  customManagers: [
+    {
+      customType: 'regex',
+      description: '# renovate: comments',
+      managerFilePatterns: [
+        '/^\\.github/workflows/.+\\.ya?ml$/',
+        '/^test/terraform/.+\\.tf$/',
+        '/^Taskfile\\.ya?ml$/',
+      ],
+      matchStrings: [
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+registryUrl=(?<registryUrl>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n[^\\n]*?[:=]\\s*["\']?(?<currentValue>[^\\s"\'@]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?["\']?',
+      ],
+    },
+  ],
+  packageRules: [
+    {
+      description: 'Image changes bump the release in the same PR',
+      groupName: 'App runtime',
+      groupSlug: 'app-runtime',
+      matchFileNames: [
+        'Dockerfile',
+        'app/requirements.in',
+        'app/requirements.txt',
+        'app/build-requirements.in',
+        'app/build-constraints.txt',
+      ],
+      addLabels: [
+        'app',
+        'release',
+      ],
+      prBodyNotes: [
+        'Bumps the app and chart patch version. Merging publishes the release.',
+      ],
+      postUpgradeTasks: {
+        commands: [
+          'bash .github/scripts/bump-release.sh {{{baseBranch}}}',
+        ],
+        fileFilters: [
+          'CHANGELOG.md',
+          'README.md',
+          'charts/*/Chart.yaml',
+          'charts/*/values.yaml',
+        ],
+        executionMode: 'branch',
+      },
+    },
+    {
+      groupName: 'Tooling',
+      matchManagers: [
+        'mise',
+      ],
+      addLabels: [
+        'tooling',
+      ],
+      separateMinorPatch: false,
+    },
+    {
+      description: 'Update both the Python and the Alpine version',
+      matchManagers: [
+        'dockerfile',
+      ],
+      matchPackageNames: [
+        'python',
+      ],
+      versioning: 'regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-alpine(?<build>\\d+)\\.(?<revision>\\d+)$',
+      separateMinorPatch: true,
+    },
+    {
+      description: 'Keep mise Python on the image version',
+      matchManagers: [
+        'mise',
+      ],
+      matchDepNames: [
+        'python',
+      ],
+      groupName: 'App runtime',
+      groupSlug: 'app-runtime',
+      separateMinorPatch: true,
+    },
+    {
+      matchDatasources: [
+        'apk',
+      ],
+      registryUrls: [
+        'https://dl-cdn.alpinelinux.org/alpine?branch=latest-stable&components=main,community&arch=x86_64',
+      ],
+    },
+    {
+      description: 'Python minors need uv venv --python changed too',
+      matchManagers: [
+        'dockerfile',
+        'mise',
+      ],
+      matchDepNames: [
+        'python',
+      ],
+      matchUpdateTypes: [
+        'major',
+        'minor',
+      ],
+      groupName: 'Python',
+      groupSlug: 'python',
+      prBodyNotes: [
+        'Bumps the app and chart patch version. Merging publishes the release.',
+        'Update `uv venv --python` in the `Dockerfile` before merging.',
+      ],
+    },
+    {
+      groupName: 'GitHub Actions',
+      matchFileNames: [
+        '.github/workflows/**',
+      ],
+      addLabels: [
+        'ci',
+      ],
+    },
+    {
+      groupName: 'Test dependencies',
+      matchFileNames: [
+        'test/**',
+      ],
+      addLabels: [
+        'test',
+      ],
+    },
+    {
+      description: 'Set by bump-release.sh',
+      matchManagers: [
+        'helm-values',
+      ],
+      matchPackageNames: [
+        'docker.io/rdvansloten/cert-manager-key-vault-sync',
+      ],
+      enabled: false,
+    },
+  ],
+}
