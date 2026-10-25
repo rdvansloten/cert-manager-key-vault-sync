@@ -177,6 +177,20 @@
       ],
     },
     {
+      description: 'Kubernetes Go modules only work at the same version, so update the indirect ones with k8s.io/apimachinery',
+      matchManagers: [
+        'gomod',
+      ],
+      matchDepTypes: [
+        'indirect',
+      ],
+      matchPackageNames: [
+        'k8s.io/api',
+        'k8s.io/client-go',
+      ],
+      enabled: true,
+    },
+    {
       description: 'Helm sets the upgrade test chart by version only',
       matchDepNames: [
         'rdvansloten/cert-manager-key-vault-sync-chart',
