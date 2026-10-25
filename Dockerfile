@@ -10,7 +10,7 @@ RUN chown haro:corgis /app
 # Install openssl and uv as root
 RUN apk add --no-cache \
       openssl=3.5.9-r0 \
-      uv=0.11.19-r0
+      uv=0.11.19-r1
 
 # Switch to non-root user for the remaining steps
 USER haro
