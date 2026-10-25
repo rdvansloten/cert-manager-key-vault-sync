@@ -1,6 +1,6 @@
 image:
   repository: docker.io/rdvansloten/cert-manager-key-vault-sync
-  tag: v1.4.2
+  tag: v1.4.3
   pullPolicy: Always
 
 replicaCount: 3
