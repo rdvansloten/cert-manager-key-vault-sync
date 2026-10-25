@@ -1,7 +1,7 @@
 # cert-manager-key-vault-sync
 
 > [!WARNING]  
-> Due to an oversight when aligning versions, Helm Charts and Docker images were overwriting one another on the latest builds. This is now resolved by moving the Helm Charts to `docker.io/rdvansloten/cert-manager-key-vault-sync-chart`. Please update your install accordingly.
+> Due to an oversight when aligning versions, Helm Charts and Docker images were overwriting one another on builds before v1.4.0. This is now resolved by moving the Helm Charts to `docker.io/rdvansloten/cert-manager-key-vault-sync-chart`. Please update your install accordingly.
 
 Kubernetes app that syncs [cert-manager](https://cert-manager.io) Secrets to Azure Key Vault.
 
@@ -35,7 +35,6 @@ For complete documentation, see the [`wiki`](https://github.com/rdvansloten/cert
 [Helm v3 or higher](https://helm.sh/docs/intro/install/#through-package-managers) is recommended for use with this Helm Chart.
 
 ```sh
-export HELM_EXPERIMENTAL_OCI=1
 helm upgrade --install cert-manager-key-vault-sync \
     oci://docker.io/rdvansloten/cert-manager-key-vault-sync-chart \
     --values ./charts/cert-manager-key-vault-sync-chart/values.yaml \
@@ -68,6 +67,14 @@ Pull requests are the best way to propose changes. I actively welcome your Pull 
 2. If you've added code that should be tested, add some test examples.
 3. Update the documentation.
 4. Submit that Pull Request!
+
+### Using AI coding agents
+
+You're welcome to use an AI coding agent, as long as you understand and stand behind every change you submit. This repository supports Claude Code, OpenCode and Codex. [AGENTS.md](AGENTS.md) holds the rules all three follow, and each has its own permission settings that enforce them: [.claude/](.claude/) for Claude Code, [.opencode/](.opencode/) for OpenCode and [.codex/](.codex/) for Codex. Codex only applies its settings after you mark the project's `.codex/` folder as trusted. Good to know:
+
+- Agents leave committing, pushing and opening the Pull Request to you, and won't write the Pull Request description. Write it yourself, in your own words.
+- Agents run tools that aren't in `mise.toml` in a container with your local Docker for security, instead of installing them. They ask before starting Docker.
+- `task dev:build` and `task dev:test` create an AKS cluster and Key Vault in your own Azure subscription, which costs money. Agents ask before running them, and `task dev:destroy` removes the dev environment again.
 
 ### Dependency updates
 
