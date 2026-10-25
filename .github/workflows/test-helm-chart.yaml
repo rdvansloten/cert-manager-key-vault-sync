@@ -9,6 +9,8 @@ on:
       - 'charts/**'
       - 'app/**'
       - 'Dockerfile'
+      - 'test/**'
+      - '.github/workflows/test-helm-chart.yaml'
 
 permissions:
   id-token: write
