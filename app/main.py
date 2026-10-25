@@ -6,11 +6,14 @@ import time
 import json
 import fnmatch
 import logging
-import subprocess
+from secrets import token_urlsafe
 import threading
 import datetime
 import requests
 from packaging import version
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.serialization import pkcs12
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.certificates import CertificateClient
 from azure.core.exceptions import ResourceNotFoundError, ServiceRequestError
@@ -66,7 +69,7 @@ def matches_certificate_filter(name):
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
 github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v1.4.0"
+current_version = "v1.4.4"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Leader election variables
@@ -244,18 +247,8 @@ def renew_leadership(api):
 
 # Compares the thumbprint from a Kubernetes certificate with the one from Key Vault.
 def compare_thumbprint(kubernetes_cert, key_vault_thumbprint):
-    with open("cert.pem", "wb") as cert_file:
-        cert_file.write(kubernetes_cert)
-
-    kubernetes_raw_thumbprint = subprocess.run(
-        ["openssl", "x509", "-in", "cert.pem", "-noout", "-fingerprint"],
-        capture_output=True,
-        text=True,
-    )
-    kubernetes_thumbprint = re.search(r"Fingerprint=([\dA-F:]+)", kubernetes_raw_thumbprint.stdout).group(1).replace(":", "")
-
-    logging.debug("Deleting temporary file 'cert.pem'.")
-    os.remove("cert.pem")
+    leaf = x509.load_pem_x509_certificates(kubernetes_cert)[0]
+    kubernetes_thumbprint = leaf.fingerprint(hashes.SHA1()).hex().upper()
 
     logging.debug(f"Kubernetes Thumbprint: {kubernetes_thumbprint}")
     logging.debug(f"Key Vault Thumbprint: {key_vault_thumbprint}")
@@ -263,28 +256,22 @@ def compare_thumbprint(kubernetes_cert, key_vault_thumbprint):
     return kubernetes_thumbprint != key_vault_thumbprint
 
 
-# Creates a PFX file using the provided certificate and key data.
-def create_pfx(cert_data, key_data, cert_name):
-    with open("cert.pem", "wb") as cert_file, open("key.pem", "wb") as key_file:
-        cert_file.write(cert_data)
-        key_file.write(key_data)
-
-    subprocess.check_output(
-        [
-            "openssl",
-            "pkcs12",
-            "-export",
-            "-in",
-            "cert.pem",
-            "-inkey",
-            "key.pem",
-            "-out",
-            f"{cert_name}.pfx",
-            "-passout",
-            "pass:",
-        ]
+# Creates an encrypted PFX from the certificate chain and key, returning its bytes and one-time password.
+def create_pfx(cert_data, key_data):
+    key = serialization.load_pem_private_key(key_data, password=None)
+    certs = x509.load_pem_x509_certificates(cert_data)
+    public_key = key.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    leaf = next(
+        (c for c in certs if c.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo) == public_key),
+        None,
     )
-    return f"{cert_name}.pfx"
+    if leaf is None:
+        raise ValueError("No certificate in tls.crt matches the private key in tls.key")
+
+    password = token_urlsafe(32)
+    encryption = serialization.PrivateFormat.PKCS12.encryption_builder().kdf_rounds(2048).key_cert_algorithm(pkcs12.PBES.PBESv2SHA256AndAES256CBC).hmac_hash(hashes.SHA256()).build(password.encode())
+    pfx = pkcs12.serialize_key_and_certificates(None, key, leaf, [c for c in certs if c is not leaf] or None, encryption)
+    return pfx, password
 
 
 # Loads the initial state from Kubernetes and Key Vault, just a quick check.
@@ -314,25 +301,18 @@ def load_initial_state():
 
 # Creates or updates a certificate in Key Vault from the given secret data.
 def create_key_vault_certificate(cert_name, namespace, cert_data, key_data):
-    pfx_file = create_pfx(cert_data, key_data, cert_name)
     try:
-        with open(pfx_file, "rb") as f:
-            pfx_cert_bytes = f.read()
-
+        pfx_cert_bytes, pfx_password = create_pfx(cert_data, key_data)
         logging.info(f"Writing Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}'.")
         imported_pfx_cert = certificate_client.import_certificate(
             certificate_name=cert_name,
             certificate_bytes=pfx_cert_bytes,
+            password=pfx_password,
             tags={"SyncFrom": "cert-manager-key-vault-sync", "namespace": namespace},
         )
         logging.info(f"PFX certificate '{imported_pfx_cert.name}' imported successfully.")
     except Exception as e:
         logging.error(f"Failed to sync Secret {cert_name} from namespace '{namespace}' to Key Vault '{key_vault_name}': {str(e)}")
-    finally:
-        logging.debug("Deleting temporary certificate files.")
-        os.remove(pfx_file)
-        os.remove("key.pem")
-        os.remove("cert.pem")
 
 
 # Syncs Kubernetes secrets to Key Vault by checking for new or updated certificates.

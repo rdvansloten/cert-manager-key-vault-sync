@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.4.4] - 2026-10-25
+
+### Changed
+
+- Certificates are read and converted to PFX in memory with the `cryptography` package instead of the `openssl` command, so private keys are no longer written to disk
+- The image no longer contains any Alpine packages
+
+### Fixed
+
+- The app reported its version as v1.4.0 since v1.4.1, so the version check always said a newer version was available
+
+### Added
+
+- The end-to-end test checks that Key Vault serves each synced certificate with the original key, certificate and CA chain
+
 ## [v1.4.3] - 2026-10-25
 
 ### Added

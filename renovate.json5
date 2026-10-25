@@ -81,6 +81,7 @@
         fileFilters: [
           'CHANGELOG.md',
           'README.md',
+          'app/main.py',
           'charts/*/Chart.yaml',
           'charts/*/values.yaml',
         ],

@@ -77,6 +77,12 @@ resource "azurerm_role_assignment" "cmkvs" {
   scope                = azurerm_key_vault.main.id
 }
 
+resource "azurerm_role_assignment" "test_runner" {
+  principal_id         = data.azurerm_client_config.current.object_id
+  role_definition_name = "Key Vault Secrets User"
+  scope                = azurerm_key_vault.main.id
+}
+
 # Certificate
 resource "random_string" "certificate" {
   count = var.certificate_amount
@@ -87,14 +93,37 @@ resource "random_string" "certificate" {
   numeric = false
 }
 
+resource "tls_private_key" "ca" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
+}
+
+resource "tls_self_signed_cert" "ca" {
+  private_key_pem   = tls_private_key.ca.private_key_pem
+  is_ca_certificate = true
+
+  subject {
+    common_name  = "${var.certificate_organization} test CA"
+    organization = var.certificate_organization
+  }
+
+  validity_period_hours = 24
+
+  allowed_uses = [
+    "cert_signing",
+    "crl_signing",
+  ]
+}
+
 resource "tls_private_key" "main" {
   count = var.certificate_amount
 
-  algorithm = "RSA"
-  rsa_bits  = 4096
+  algorithm   = count.index % 2 == 0 ? "RSA" : "ECDSA"
+  rsa_bits    = 4096
+  ecdsa_curve = "P256"
 }
 
-resource "tls_self_signed_cert" "main" {
+resource "tls_cert_request" "main" {
   count = var.certificate_amount
 
   private_key_pem = tls_private_key.main[count.index].private_key_pem
@@ -103,6 +132,14 @@ resource "tls_self_signed_cert" "main" {
     common_name  = "${random_string.certificate[count.index].result}.${var.certificate_domain}"
     organization = var.certificate_organization
   }
+}
+
+resource "tls_locally_signed_cert" "main" {
+  count = var.certificate_amount
+
+  cert_request_pem   = tls_cert_request.main[count.index].cert_request_pem
+  ca_private_key_pem = tls_private_key.ca.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca.cert_pem
 
   validity_period_hours = 24
 
@@ -124,9 +161,9 @@ resource "kubernetes_secret_v1" "main" {
   }
 
   data = {
-    "tls.crt" = tls_self_signed_cert.main[count.index].cert_pem
+    "tls.crt" = "${tls_locally_signed_cert.main[count.index].cert_pem}${tls_self_signed_cert.ca.cert_pem}"
     "tls.key" = tls_private_key.main[count.index].private_key_pem
-    "ca.crt"  = ""
+    "ca.crt"  = tls_self_signed_cert.ca.cert_pem
   }
 
   type = "kubernetes.io/tls"
@@ -173,7 +210,7 @@ resource "helm_release" "cert-manager-key-vault-sync" {
   depends_on = [
     helm_release.prometheus,
     docker_registry_image.main,
-    tls_self_signed_cert.main
+    tls_locally_signed_cert.main
   ]
 
   set = [

@@ -43,6 +43,9 @@ edit "$chart_dir/Chart.yaml" \
 edit "$chart_dir/values.yaml" \
   -e "s/^  tag: .*/  tag: $new_app/"
 
+edit app/main.py \
+  -e "s/^current_version = .*/current_version = \"$new_app\"/"
+
 edit README.md \
   -e "s/^\(| Helm Chart  | \)v[0-9.]*/\1$new_chart/" \
   -e "s/^\(| Application | \)v[0-9.]*/\1$new_app/" \

@@ -4,3 +4,4 @@ kubernetes==37.0.*
 requests==2.34.*
 packaging==26.*
 prometheus-client==0.26.*
+cryptography==50.0.*

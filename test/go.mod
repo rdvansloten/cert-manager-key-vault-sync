@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/gruntwork-io/terratest v1.0.1
 	github.com/stretchr/testify v1.12.1
+	software.sslmate.com/src/go-pkcs12 v0.7.4
 )
 
 require (

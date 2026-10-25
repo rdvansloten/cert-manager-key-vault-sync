@@ -1,7 +1,11 @@
 package test
 
 import (
+	"crypto"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,7 +22,15 @@ import (
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"software.sslmate.com/src/go-pkcs12"
 )
+
+type syncedCertificate struct {
+	Name        string `json:"name"`
+	Certificate string `json:"certificate"`
+	PrivateKey  string `json:"private_key"`
+}
 
 // fetchSensitiveOutput suppresses logging of sensitive outputs
 func fetchSensitiveOutput(t *testing.T, options *terraform.Options, name string) string {
@@ -213,4 +226,87 @@ users:
 	}
 	t.Logf("Final Prometheus response: %s", lastResponseJSON)
 	assert.True(t, foundMetric, fmt.Sprintf("Expected metric 'certificate_sync_total' to return a value of 1. Last response: %s", lastResponseJSON))
+
+	verifyKeyVaultCertificates(t, terraformOptions)
+}
+
+// verifyKeyVaultCertificates downloads each synced certificate the way App Gateway and other Key Vault
+// consumers read it, and checks it opens without a password and holds the original key, certificate and CA.
+func verifyKeyVaultCertificates(t *testing.T, options *terraform.Options) {
+	keyVaultName := terraform.OutputContext(t, t.Context(), options, "key_vault_name")
+	caCertificate := parseCertificate(t, terraform.OutputContext(t, t.Context(), options, "ca_certificate"))
+
+	var certificates []syncedCertificate
+	options.Logger = logger.Discard
+	terraform.OutputStructContext(t, t.Context(), options, "certificates", &certificates)
+	options.Logger = nil
+	require.NotEmpty(t, certificates)
+
+	for _, expected := range certificates {
+		t.Run(expected.Name, func(t *testing.T) {
+			privateKey, leaf, chain, err := pkcs12.DecodeChain(downloadKeyVaultCertificate(t, keyVaultName, expected.Name), "")
+			require.NoError(t, err, "Key Vault should return the certificate as a PFX without a password")
+
+			assert.Equal(t, parseCertificate(t, expected.Certificate).Raw, leaf.Raw, "certificate should match tls.crt")
+			assert.Equal(t, publicKeyDER(t, parsePrivateKey(t, expected.PrivateKey)), publicKeyDER(t, privateKey), "private key should match tls.key")
+
+			chainHasCA := false
+			for _, c := range chain {
+				chainHasCA = chainHasCA || string(c.Raw) == string(caCertificate.Raw)
+			}
+			assert.True(t, chainHasCA, "CA certificate from tls.crt should be in the chain")
+		})
+	}
+}
+
+// downloadKeyVaultCertificate returns the PFX that Key Vault serves for a certificate, retrying while the sync and RBAC catch up.
+func downloadKeyVaultCertificate(t *testing.T, keyVaultName, name string) []byte {
+	var lastError string
+	for i := 0; i < 30; i++ {
+		out, err := exec.Command("az", "keyvault", "secret", "show", "--vault-name", keyVaultName, "--name", name, "--query", "value", "--output", "tsv").Output()
+		if err == nil {
+			pfx, decodeErr := base64.StdEncoding.DecodeString(strings.TrimSpace(string(out)))
+			require.NoError(t, decodeErr)
+			return pfx
+		}
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			lastError = strings.TrimSpace(string(exitErr.Stderr))
+		} else {
+			lastError = err.Error()
+		}
+		t.Logf("Attempt %d: Key Vault certificate %s not readable yet: %s", i+1, name, lastError)
+		time.Sleep(10 * time.Second)
+	}
+	t.Fatalf("Could not download Key Vault certificate %s: %s", name, lastError)
+	return nil
+}
+
+func parseCertificate(t *testing.T, pemData string) *x509.Certificate {
+	block, _ := pem.Decode([]byte(pemData))
+	require.NotNil(t, block, "expected a PEM certificate")
+	certificate, err := x509.ParseCertificate(block.Bytes)
+	require.NoError(t, err)
+	return certificate
+}
+
+func parsePrivateKey(t *testing.T, pemData string) any {
+	block, _ := pem.Decode([]byte(pemData))
+	require.NotNil(t, block, "expected a PEM private key")
+	if key, err := x509.ParsePKCS8PrivateKey(block.Bytes); err == nil {
+		return key
+	}
+	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		return key
+	}
+	key, err := x509.ParseECPrivateKey(block.Bytes)
+	require.NoError(t, err)
+	return key
+}
+
+func publicKeyDER(t *testing.T, privateKey any) []byte {
+	signer, ok := privateKey.(crypto.Signer)
+	require.True(t, ok, "private key should be a crypto.Signer")
+	der, err := x509.MarshalPKIXPublicKey(signer.Public())
+	require.NoError(t, err)
+	return der
 }
