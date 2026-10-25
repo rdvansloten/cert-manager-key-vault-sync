@@ -5,6 +5,18 @@ image:
 
 replicaCount: 3
 
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
 leaderElection:
   leaseDurationSeconds: 60
   renewIntervalSeconds: 15

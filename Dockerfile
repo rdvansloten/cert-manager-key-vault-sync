@@ -1,7 +1,7 @@
 FROM python:3.15.1-alpine3.24@sha256:54448f67d7c31c39e5cdd3ea2d6382395ce142806c284425f8e897d78a0465b3 AS builder
 
 # Create a non-root user and group
-RUN addgroup -S corgis && adduser -S haro -G corgis
+RUN addgroup -S -g 10001 corgis && adduser -S -u 10001 -G corgis haro
 
 WORKDIR /app
 # Ensure the working directory has the correct permissions
@@ -16,7 +16,7 @@ USER haro
 COPY ./app/requirements.txt ./app/build-constraints.txt ./
 RUN uv venv --python=python3.15 /home/haro/.venv && \
     source /home/haro/.venv/bin/activate && \
-    uv pip install --require-hashes --build-constraints build-constraints.txt --requirements requirements.txt
+    uv pip install --require-hashes --compile-bytecode --build-constraints build-constraints.txt --requirements requirements.txt
 
 # Copy the installed packages to a final image
 FROM python:3.15.1-alpine3.24@sha256:54448f67d7c31c39e5cdd3ea2d6382395ce142806c284425f8e897d78a0465b3
@@ -25,10 +25,9 @@ FROM python:3.15.1-alpine3.24@sha256:54448f67d7c31c39e5cdd3ea2d6382395ce142806c2
 RUN python -m pip uninstall --yes --root-user-action=ignore pip
 
 # Create a non-root user and group in the final image
-RUN addgroup -S corgis && adduser -S haro -G corgis
+RUN addgroup -S -g 10001 corgis && adduser -S -u 10001 -G corgis haro
 
 WORKDIR /app
-RUN chown haro:corgis /app
 
 # Copy the installed dependencies from the builder stage
 COPY --from=builder /home/haro/.venv /home/haro/.venv
@@ -37,7 +36,10 @@ COPY --from=builder /home/haro/.venv /home/haro/.venv
 COPY ./app/main.py main.py
 
 # Switch to non-root user for execution
-USER haro
+USER 10001:10001
+
+# Image should only run in read-only environment
+ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN source /home/haro/.venv/bin/activate
 

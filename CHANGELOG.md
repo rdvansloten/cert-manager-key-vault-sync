@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Certificates are read and converted to PFX in memory with the `cryptography` package instead of the `openssl` command, so private keys are no longer written to disk
 - The image no longer contains any Alpine packages
+- The pod runs as a non-root user with a read-only filesystem, no Linux capabilities and the default seccomp profile
 
 ### Fixed
 
