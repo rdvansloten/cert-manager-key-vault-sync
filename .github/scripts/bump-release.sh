@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Bumps the app and chart patch version for Renovate PRs that change the image.
-# Usage: bash .github/scripts/bump-release.sh [base-branch]
+# Bumps the app and chart version for Renovate PRs that change the image.
+# Usage: bash .github/scripts/bump-release.sh [base-branch] [patch|minor|major]
 set -euo pipefail
 
 base="${1:-main}"
+part="${2:-patch}"
 chart_dir="charts/cert-manager-key-vault-sync-chart"
 
 ref=""
@@ -18,10 +19,15 @@ read_field() {
   git show "$ref:$chart_dir/Chart.yaml" | awk -v key="$1:" '$1 == key { print $2 }'
 }
 
-bump_patch() {
+bump() {
   local major minor patch
   IFS=. read -r major minor patch <<<"${1#v}"
-  echo "v$major.$minor.$((patch + 1))"
+  case "$part" in
+    major) echo "v$((major + 1)).0.0" ;;
+    minor) echo "v$major.$((minor + 1)).0" ;;
+    patch) echo "v$major.$minor.$((patch + 1))" ;;
+    *) echo "Unknown version part: $part" >&2; exit 1 ;;
+  esac
 }
 
 # Portable in-place edit (GNU and BSD sed differ on -i)
@@ -33,8 +39,8 @@ edit() {
 
 old_app="$(read_field appVersion)"
 old_chart="$(read_field version)"
-new_app="$(bump_patch "$old_app")"
-new_chart="$(bump_patch "$old_chart")"
+new_app="$(bump "$old_app")"
+new_chart="$(bump "$old_chart")"
 
 edit "$chart_dir/Chart.yaml" \
   -e "s/^version: .*/version: $new_chart/" \
@@ -42,6 +48,9 @@ edit "$chart_dir/Chart.yaml" \
 
 edit "$chart_dir/values.yaml" \
   -e "s/^  tag: .*/  tag: $new_app/"
+
+edit app/main.py \
+  -e "s/^current_version = .*/current_version = \"$new_app\"/"
 
 edit README.md \
   -e "s/^\(| Helm Chart  | \)v[0-9.]*/\1$new_chart/" \

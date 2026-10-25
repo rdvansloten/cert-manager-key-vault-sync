@@ -4,6 +4,19 @@ variable "auto_cleanup" {
   default     = false
 }
 
+variable "install_previous_release" {
+  description = "Install the previous published chart and image instead of the local chart and test image."
+  type        = bool
+  default     = false
+}
+
+variable "previous_chart_version" {
+  description = "Published chart version that the upgrade test starts from."
+  type        = string
+  # renovate: datasource=docker depName=rdvansloten/cert-manager-key-vault-sync-chart versioning=semver
+  default = "v1.3.4"
+}
+
 variable "location" {
   description = "Azure region to deploy resources"
   type        = string

@@ -114,9 +114,10 @@ tasks:
       - tofu destroy -input=false -auto-approve {{.TF_ARGS}}
 
   release:bump:
-    desc: Bump the app and Helm chart patch version and add a CHANGELOG entry, counting from BASE (default main). Renovate does this on its own image PRs.
+    desc: Bump the app and Helm chart version (PART=patch|minor|major, default patch) and add a CHANGELOG entry, counting from BASE (default main). Renovate does this on its own image PRs.
     vars:
       BASE: '{{.BASE | default "main"}}'
+      PART: '{{.PART | default "patch"}}'
     cmds:
       - git fetch --quiet origin {{.BASE}}
-      - bash .github/scripts/bump-release.sh {{.BASE}}
+      - bash .github/scripts/bump-release.sh {{.BASE}} {{.PART}}
