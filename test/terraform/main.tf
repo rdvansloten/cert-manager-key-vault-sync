@@ -94,8 +94,8 @@ resource "random_string" "certificate" {
 }
 
 resource "tls_private_key" "ca" {
-  algorithm   = "ECDSA"
-  ecdsa_curve = "P256"
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
 resource "tls_self_signed_cert" "ca" {
@@ -118,9 +118,8 @@ resource "tls_self_signed_cert" "ca" {
 resource "tls_private_key" "main" {
   count = var.certificate_amount
 
-  algorithm   = count.index % 2 == 0 ? "RSA" : "ECDSA"
-  rsa_bits    = 4096
-  ecdsa_curve = "P256"
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
 resource "tls_cert_request" "main" {
