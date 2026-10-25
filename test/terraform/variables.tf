@@ -14,7 +14,7 @@ variable "previous_chart_version" {
   description = "Published chart version that the upgrade test starts from."
   type        = string
   # renovate: datasource=docker depName=rdvansloten/cert-manager-key-vault-sync-chart versioning=semver
-  default = "v1.4.0"
+  default = "v1.4.1"
 }
 
 variable "location" {
