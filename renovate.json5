@@ -121,6 +121,15 @@
       separateMinorPatch: true,
     },
     {
+      description: 'Keep mise uv on the version copied into the image',
+      matchDepNames: [
+        'uv',
+        'ghcr.io/astral-sh/uv',
+      ],
+      groupName: 'App runtime',
+      groupSlug: 'app-runtime',
+    },
+    {
       matchDatasources: [
         'apk',
       ],

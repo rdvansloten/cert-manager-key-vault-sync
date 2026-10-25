@@ -15,6 +15,9 @@ env:
   CHART_NAME: cert-manager-key-vault-sync-chart
   REPOSITORY_NAME: rdvansloten
 
+permissions:
+  contents: write
+
 jobs:
   build-and-push:
     name: Build and Push Docker Image
@@ -54,6 +57,18 @@ jobs:
         context: .
         push: true
         tags: ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:latest, ${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}
+
+    - name: Create GitHub Release
+      if: github.ref == 'refs/heads/main'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if gh release view "$APP_VERSION" >/dev/null 2>&1; then
+          echo "Release $APP_VERSION already exists."
+          exit 0
+        fi
+        bash .github/scripts/release-notes.sh "$APP_VERSION" > release-notes.md
+        gh release create "$APP_VERSION" --target "$GITHUB_SHA" --title "$APP_VERSION" --notes-file release-notes.md --latest
 
     - name: Logout from Docker Hub
       run: docker logout
