@@ -6,3 +6,5 @@
 *.log
 .ruff_cache
 dev-kubeconfig.yaml
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

@@ -1,0 +1,172 @@
+prefix_rule(
+    pattern = ["git", ["add", "am", "apply", "branch", "checkout", "cherry-pick", "clean", "commit", "config", "filter-branch", "gc", "merge", "mv", "pull", "push", "rebase", "reset", "restore", "revert", "rm", "stash", "submodule", "switch", "tag", "worktree"]],
+    decision = "forbidden",
+    justification = "The contributor makes all git changes themselves. See AGENTS.md.",
+    match = ["git commit -m test", "git push origin main", "git switch main"],
+    not_match = ["git status", "git diff", "git log --oneline"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "merge", "close", "reopen", "edit", "comment", "review", "ready", "lock", "unlock"]],
+    decision = "forbidden",
+    justification = "The contributor opens and manages their own pull requests. See AGENTS.md.",
+    match = ["gh pr create --fill"],
+    not_match = ["gh pr view 37"],
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["create", "close", "reopen", "edit", "comment", "delete", "transfer", "lock", "pin"]],
+    decision = "forbidden",
+    justification = "Writing through gh is not allowed. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", ["create", "delete", "edit", "archive", "rename", "fork", "sync"]],
+    decision = "forbidden",
+    justification = "Writing through gh is not allowed. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["gh", "release", ["create", "delete", "edit", "upload", "delete-asset"]],
+    decision = "forbidden",
+    justification = "Releases are published by the workflows. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["gh", ["workflow", "run", "secret", "variable", "label", "gist", "project"], ["run", "enable", "disable", "cancel", "delete", "rerun", "set", "create", "edit"]],
+    decision = "forbidden",
+    justification = "Writing through gh is not allowed. See AGENTS.md.",
+    match = ["gh workflow run test.yaml", "gh secret set TOKEN", "gh run rerun 1"],
+    not_match = ["gh run view 1", "gh workflow list"],
+)
+
+prefix_rule(
+    pattern = ["gh", "api", "graphql"],
+    decision = "forbidden",
+    justification = "gh api graphql is not allowed. Use a read-only REST call. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["gh", "api"],
+    decision = "prompt",
+    justification = "gh api is only allowed for reads. Check that the call has no -f, -F, --field, --raw-field, --input or non-GET method.",
+    match = ["gh api repos/rdvansloten/cert-manager-key-vault-sync"],
+)
+
+prefix_rule(
+    pattern = ["kubectl", ["patch", "apply", "edit", "scale", "annotate", "label", "set", "create", "replace", "expose", "autoscale", "cordon", "uncordon", "drain", "taint", "proxy"]],
+    decision = "forbidden",
+    justification = "Changes reach the cluster through OpenTofu and the Helm chart. Give the contributor the command instead. See AGENTS.md.",
+    match = ["kubectl apply -f deployment.yaml", "kubectl scale deployment/x --replicas=0"],
+    not_match = ["kubectl get pods", "kubectl logs pod/x"],
+)
+
+prefix_rule(
+    pattern = ["kubectl", "rollout", ["restart", "undo", "pause", "resume"]],
+    decision = "forbidden",
+    justification = "Changes reach the cluster through OpenTofu and the Helm chart. See AGENTS.md.",
+    not_match = ["kubectl rollout status deployment/cert-manager-key-vault-sync"],
+)
+
+prefix_rule(
+    pattern = ["kubectl", "delete", ["namespace", "namespaces", "ns", "node", "nodes", "pv", "persistentvolume", "pvc", "persistentvolumeclaim", "deployment", "deployments", "statefulset", "daemonset", "secret", "secrets", "configmap", "configmaps", "cm", "crd", "customresourcedefinition", "-f", "--filename", "--all"]],
+    decision = "forbidden",
+    justification = "Removing namespaces, nodes, volumes, workloads, Secrets, ConfigMaps and CRDs is not allowed. See AGENTS.md.",
+    match = ["kubectl delete namespace cert-manager-key-vault-sync"],
+)
+
+prefix_rule(
+    pattern = ["kubectl", ["exec", "run", "debug", "attach", "cp", "delete"]],
+    decision = "prompt",
+    justification = "State which Pod and which command before each one. See AGENTS.md.",
+    match = ["kubectl exec -it pod/x -- sh", "kubectl delete pod cmkvs-debug-1"],
+)
+
+prefix_rule(
+    pattern = ["kubectl", ["get", "describe"], ["secret", "secrets"]],
+    decision = "prompt",
+    justification = "Secret values are not allowed. Only list names, or use kubectl describe secret, never -o yaml, json, jsonpath, go-template or custom-columns.",
+    match = ["kubectl get secret tls -o yaml"],
+)
+
+prefix_rule(
+    pattern = ["kubectl", "config", "view", "--raw"],
+    decision = "forbidden",
+    justification = "The raw kubeconfig holds cluster credentials. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["kubectl", "cluster-info", "dump"],
+    decision = "forbidden",
+    justification = "A cluster dump includes Secret values. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["az", "keyvault", ["secret", "certificate", "key"], ["show", "download", "backup", "delete", "purge"]],
+    decision = "forbidden",
+    justification = "Reading or deleting Key Vault secret, certificate or key values is not allowed. Listing names stays allowed. See AGENTS.md.",
+    match = ["az keyvault secret show --vault-name kv --name cert"],
+    not_match = ["az keyvault secret list --vault-name kv"],
+)
+
+prefix_rule(
+    pattern = ["az", ["group", "aks", "keyvault", "identity", "resource", "storage", "network", "vm", "acr"], ["delete", "purge"]],
+    decision = "forbidden",
+    justification = "Destructive Azure CLI commands are not allowed. See AGENTS.md.",
+    match = ["az group delete --name test-abcd-cmkvs01 --yes"],
+)
+
+prefix_rule(
+    pattern = ["az", "role", "assignment", "delete"],
+    decision = "forbidden",
+    justification = "Destructive Azure CLI commands are not allowed. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["az"],
+    decision = "prompt",
+    justification = "Do not use the contributor's Azure login to reason about CI, and never delete or read secret values. See AGENTS.md.",
+    match = ["az account show"],
+)
+
+prefix_rule(
+    pattern = [["tofu", "terraform"], ["apply", "destroy"]],
+    decision = "forbidden",
+    justification = "Use the task dev:* tasks, and ask before running them. See AGENTS.md.",
+    match = ["tofu apply -auto-approve"],
+    not_match = ["tofu plan", "tofu validate"],
+)
+
+prefix_rule(
+    pattern = ["docker", ["push", "login"]],
+    decision = "forbidden",
+    justification = "Images are published by the workflows. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["docker", "desktop", "start"],
+    decision = "prompt",
+    justification = "Ask the contributor before starting Docker. See AGENTS.md.",
+)
+
+prefix_rule(
+    pattern = ["docker", "run"],
+    decision = "prompt",
+    justification = "Run with --rm, mount only what the tool needs, and never mount credentials, the Docker socket or .tfstate files. See AGENTS.md.",
+    match = ["docker run --rm rhysd/actionlint:1.7.7"],
+)
+
+prefix_rule(
+    pattern = ["helm", ["push", "install", "upgrade", "uninstall", "rollback"]],
+    decision = "forbidden",
+    justification = "Charts are published by the workflows and installed through OpenTofu. See AGENTS.md.",
+    not_match = ["helm lint charts/cert-manager-key-vault-sync-chart", "helm template charts/cert-manager-key-vault-sync-chart"],
+)
+
+prefix_rule(
+    pattern = ["task", ["dev:build", "dev:test", "dev:destroy", "release:bump"]],
+    decision = "prompt",
+    justification = "These create or delete billable Azure resources, or rewrite the CHANGELOG. See AGENTS.md.",
+    match = ["task dev:build", "task release:bump PART=minor"],
+    not_match = ["task dev:plan"],
+)
