@@ -242,9 +242,10 @@ func verifyKeyVaultCertificates(t *testing.T, options *terraform.Options) {
 	options.Logger = nil
 	require.NotEmpty(t, certificates)
 
+	deadline := time.Now().Add(5 * time.Minute)
 	for _, expected := range certificates {
 		t.Run(expected.Name, func(t *testing.T) {
-			privateKey, leaf, chain, err := pkcs12.DecodeChain(downloadKeyVaultCertificate(t, keyVaultName, expected.Name), "")
+			privateKey, leaf, chain, err := pkcs12.DecodeChain(downloadKeyVaultCertificate(t, keyVaultName, expected.Name, deadline), "")
 			require.NoError(t, err, "Key Vault should return the certificate as a PFX without a password")
 
 			assert.Equal(t, parseCertificate(t, expected.Certificate).Raw, leaf.Raw, "certificate should match tls.crt")
@@ -259,10 +260,10 @@ func verifyKeyVaultCertificates(t *testing.T, options *terraform.Options) {
 	}
 }
 
-// downloadKeyVaultCertificate returns the PFX that Key Vault serves for a certificate, retrying while the sync and RBAC catch up.
-func downloadKeyVaultCertificate(t *testing.T, keyVaultName, name string) []byte {
+// downloadKeyVaultCertificate returns the PFX that Key Vault serves for a certificate, retrying until the deadline while the sync and RBAC catch up.
+func downloadKeyVaultCertificate(t *testing.T, keyVaultName, name string, deadline time.Time) []byte {
 	var lastError string
-	for i := 0; i < 30; i++ {
+	for i := 0; ; i++ {
 		out, err := exec.Command("az", "keyvault", "secret", "show", "--vault-name", keyVaultName, "--name", name, "--query", "value", "--output", "tsv").Output()
 		if err == nil {
 			pfx, decodeErr := base64.StdEncoding.DecodeString(strings.TrimSpace(string(out)))
@@ -274,11 +275,12 @@ func downloadKeyVaultCertificate(t *testing.T, keyVaultName, name string) []byte
 		} else {
 			lastError = err.Error()
 		}
+		if time.Now().Add(10 * time.Second).After(deadline) {
+			t.Fatalf("Could not download Key Vault certificate %s: %s", name, lastError)
+		}
 		t.Logf("Attempt %d: Key Vault certificate %s not readable yet: %s", i+1, name, lastError)
 		time.Sleep(10 * time.Second)
 	}
-	t.Fatalf("Could not download Key Vault certificate %s: %s", name, lastError)
-	return nil
 }
 
 func parseCertificate(t *testing.T, pemData string) *x509.Certificate {
