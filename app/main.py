@@ -69,7 +69,7 @@ def matches_certificate_filter(name):
 github_repository_owner = os.getenv("GITHUB_REPO_OWNER", "rdvansloten")
 github_repository_name = os.getenv("GITHUB_REPO_NAME", "cert-manager-key-vault-sync")
 version_check_interval = os.getenv("VERSION_CHECK_INTERVAL", "86400")
-current_version = "v1.5.0"
+current_version = "v1.5.1"
 check_version = os.getenv("CHECK_VERSION", "true").lower()
 
 # Leader election variables
