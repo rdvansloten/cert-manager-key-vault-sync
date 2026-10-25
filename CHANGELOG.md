@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The end-to-end test checks that Key Vault serves each synced certificate with the original key, certificate and CA chain
+- The end-to-end test also upgrades from the previous release and checks that no certificate is imported again
 
 ## [v1.4.3] - 2026-10-25
 

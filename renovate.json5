@@ -177,6 +177,13 @@
       ],
     },
     {
+      description: 'Helm sets the upgrade test chart by version only',
+      matchDepNames: [
+        'rdvansloten/cert-manager-key-vault-sync-chart',
+      ],
+      pinDigests: false,
+    },
+    {
       description: 'Set by bump-release.sh',
       matchManagers: [
         'helm-values',

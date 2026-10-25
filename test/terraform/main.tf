@@ -200,7 +200,9 @@ resource "helm_release" "prometheus" {
 
 resource "helm_release" "cert-manager-key-vault-sync" {
   name             = "cert-manager-key-vault-sync"
-  chart            = "../../charts/cert-manager-key-vault-sync-chart"
+  repository       = var.install_previous_release ? "oci://registry-1.docker.io/rdvansloten" : null
+  chart            = var.install_previous_release ? "cert-manager-key-vault-sync-chart" : "../../charts/cert-manager-key-vault-sync-chart"
+  version          = var.install_previous_release ? var.previous_chart_version : null
   namespace        = "cert-manager-key-vault-sync"
   create_namespace = true
   force_update     = true
@@ -212,7 +214,7 @@ resource "helm_release" "cert-manager-key-vault-sync" {
     tls_locally_signed_cert.main
   ]
 
-  set = [
+  set = concat(var.install_previous_release ? [] : [
     {
       name  = "image.repository"
       value = var.docker_repository
@@ -220,7 +222,8 @@ resource "helm_release" "cert-manager-key-vault-sync" {
     {
       name  = "image.tag"
       value = "test-${random_string.main.result}"
-    },
+    }
+    ], [
     {
       name  = "azure.keyVaultName"
       value = azurerm_key_vault.main.name
@@ -245,7 +248,7 @@ resource "helm_release" "cert-manager-key-vault-sync" {
       name  = "App"
       value = local.docker_triggers.App
     }
-  ]
+  ])
 }
 
 # Docker
