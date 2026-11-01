@@ -57,14 +57,14 @@ variable "kubernetes_version" {
   description = "Kubernetes minor version of the AKS cluster. AKS picks the latest patch."
   type        = string
   # renovate: datasource=endoflife-date depName=azure-kubernetes-service versioning=loose
-  default = "1.36"
+  default = "1.37"
 }
 
 variable "kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to install."
   type        = string
   # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "92.13.1"
+  default = "92.17.0"
 }
 
 variable "kube_prometheus_stack_repository" {
