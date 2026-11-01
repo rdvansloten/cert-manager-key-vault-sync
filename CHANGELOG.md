@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.5.2] - 2026-11-01
+
+### Updated
+
+- `azure-identity==1.27.0` from `azure-identity==1.26.0`
+- `azure-keyvault-certificates==4.12.0` from `azure-keyvault-certificates==4.11.3`
+
 ## [v1.5.1] - 2026-10-25
 
 ### Updated
