@@ -57,10 +57,10 @@ jobs:
     runs-on: ubuntu-26.04
     env:
       # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
-      RENOVATE_VERSION: 44.181.11@sha256:050ecf98a30c64b5dd4c51343218d52dcb6cce6875cc47cb5a754f7adee65af7
+      RENOVATE_VERSION: 44.199.0@sha256:76e0fb8c982004f8f9a6dd041a777f9c8aee6b4b852da862a1217c5ec550e6d9
     steps:
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@2804199d260ad00c1fae0e9e842888369391c776 # v46.3.10
+        uses: renovatebot/github-action@43b963bf5dd5e57f1f95c59765a018d782870211 # v46.3.11
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
           renovate-version: ${{ env.RENOVATE_VERSION }}
