@@ -1,5 +1,5 @@
-azure-identity==1.26.*
-azure-keyvault-certificates==4.11.*
+azure-identity==1.27.*
+azure-keyvault-certificates==4.12.*
 kubernetes==37.0.*
 requests==2.34.*
 packaging==26.*
