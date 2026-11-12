@@ -34,9 +34,14 @@ sync_error_total = Counter("sync_error_total", "Total number of sync cycles with
 sync_duration_seconds = Histogram("sync_duration_seconds", "Time spent in sync cycles (seconds)")
 certificate_sync_total = Counter("certificate_sync_total", "Total number of certificate sync operations attempted", ["certificate", "namespace"])
 
+KEY_VAULT_DNS_SUFFIX = os.getenv(
+        "KEY_VAULT_DNS_SUFFIX",
+        "vault.azure.net"
+        )
+
 # Set application variables
 key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
-key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
+key_vault_uri = f"https://{key_vault_name}.{KEY_VAULT_DNS_SUFFIX}/"
 use_namespaces = os.getenv("USE_NAMESPACES", "false").lower() in ("true", "1", "yes", "enabled")
 check_interval = int(os.getenv("CHECK_INTERVAL", "300"))
 filter_annotation = os.getenv("ANNOTATION", "cert-manager.io/certificate-name")
