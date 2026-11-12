@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.5.2] - 2026-11-12
+
+### Updated
+
+- `cython==3.3.1` from `cython==3.3.0`
+- `kubernetes==37.0.2` from `kubernetes==37.0.1`
+- `oauthlib==4.0.1` from `oauthlib==4.0.0`
+- `pydantic==2.14.3` from `pydantic==2.14.1`
+- `pydantic-core==2.50.4` from `pydantic-core==2.50.1`
+- `python-dateutil==4.0.0` from `python-dateutil==3.0.0`
+- `typing-inspection==0.4.5` from `typing-inspection==0.4.4`
+- `tzdata==2026.6` from `tzdata==2026.5`
+
 ## [v1.5.1] - 2026-10-25
 
 ### Updated
