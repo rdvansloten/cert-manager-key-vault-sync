@@ -1,4 +1,4 @@
-FROM python:3.15.1-alpine3.24@sha256:54448f67d7c31c39e5cdd3ea2d6382395ce142806c284425f8e897d78a0465b3 AS builder
+FROM python:3.15.2-alpine3.24@sha256:0f9552bb28711333da16915ec146f5e6bb44a7fdac9ced15dc17c2e0206346dd AS builder
 
 # Create a non-root user and group
 RUN addgroup -S -g 10001 corgis && adduser -S -u 10001 -G corgis haro
@@ -19,7 +19,7 @@ RUN uv venv --python=python3.15 /home/haro/.venv && \
     uv pip install --require-hashes --compile-bytecode --build-constraints build-constraints.txt --requirements requirements.txt
 
 # Copy the installed packages to a final image
-FROM python:3.15.1-alpine3.24@sha256:54448f67d7c31c39e5cdd3ea2d6382395ce142806c284425f8e897d78a0465b3
+FROM python:3.15.2-alpine3.24@sha256:0f9552bb28711333da16915ec146f5e6bb44a7fdac9ced15dc17c2e0206346dd
 
 # Remove the unused system pip
 RUN python -m pip uninstall --yes --root-user-action=ignore pip
