@@ -14,7 +14,7 @@ variable "previous_chart_version" {
   description = "Published chart version that the upgrade test starts from."
   type        = string
   # renovate: datasource=docker depName=rdvansloten/cert-manager-key-vault-sync-chart versioning=semver
-  default = "v1.4.1"
+  default = "v1.4.2"
 }
 
 variable "location" {
@@ -64,7 +64,7 @@ variable "kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to install."
   type        = string
   # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "93.3.0"
+  default = "93.7.0"
 }
 
 variable "kube_prometheus_stack_repository" {
