@@ -9,7 +9,9 @@
   automerge: false,
   configMigration: true,
   ignoreUnstable: true,
-  dependencyDashboard: true,
+  dependencyDashboard: {
+    enabled: true,
+  },
   osvVulnerabilityAlerts: true,
   vulnerabilityAlerts: {
     labels: [
